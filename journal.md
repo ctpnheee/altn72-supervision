@@ -4,8 +4,8 @@
 
 ## README
 
-- Prérequis : Java 21, Maven Wrapper, Docker et MySQL 8.4
-- Initialiser la base : `docker compose up -d`
+- Prérequis : Java 21, Maven Wrapper et MySQL 8.4 installé localement
+- Initialiser la base : créer la base MySQL `supervision` et configurer les variables d'environnement
 - Lancer : `./mvnw spring-boot:run`
 - Application déployée : à compléter
 - Comptes de test : à compléter
