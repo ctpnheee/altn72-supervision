@@ -35,3 +35,6 @@ build/
 ### Local configuration and secrets ###
 .env
 application-local.properties
+
+### macOS ###
+.DS_Store

@@ -31,5 +31,10 @@ Ne jamais versionner de secret. Voir `.env.example`.
 
 Les tests utilisent une base H2 en mémoire et ne nécessitent pas MySQL.
 
+## Intégration et déploiement
+
+Chaque pull request est vérifiée par GitHub Actions (`./mvnw verify`). Chaque merge sur `main`
+est déployé automatiquement sur Google Cloud Run. Procédure complète : [docs/SETUP.md](docs/SETUP.md).
+
 Le dépôt est volontairement vide de code métier. Il fournit uniquement le projet Maven, ses dépendances,
 la configuration MySQL et le test de démarrage généré. Les fonctionnalités F1 à F12 restent à développer.

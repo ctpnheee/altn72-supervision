@@ -14,8 +14,18 @@
 ## ARCHITECTURE
 
 - Dépôt : https://github.com/ctpnheee/altn72-supervision
-- Architecture multicouche : contrôleurs → services → repositories → MySQL
-- Vue : contrôleurs → templates Thymeleaf
+- Schéma et description détaillée : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+  (couches, packages, modèle de données, cycle de vie d'un incident, niveau d'attention, erreurs, sécurité, déploiement)
+
+```mermaid
+flowchart TB
+    nav["Navigateur"] -- HTTP --> sec["Spring Security"]
+    sec --> web["Couche web : @Controller (Thymeleaf) · @RestController (API) · DTO · @ControllerAdvice"]
+    web -- Model --> views["Vues Thymeleaf"]
+    web --> svc["Couche service : règles métier RG1–RG10"]
+    svc --> repo["Couche persistance : Spring Data JPA"]
+    repo --> db[("MySQL")]
+```
 
 ## TESTS
 
