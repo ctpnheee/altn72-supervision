@@ -37,7 +37,6 @@ flowchart TB
     sec --> mvc
     sec --> api
     mvc -- Model --> views
-    views -. HTML .-> nav
     mvc --> svc
     api --> svc
     svc --> repo
