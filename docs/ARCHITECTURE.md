@@ -71,56 +71,29 @@ fr.efrei.altn72.supervision
 
 ## 3. Modèle de données
 
-```mermaid
-erDiagram
-    STATION ||--o{ EQUIPEMENT : "contient"
-    EQUIPEMENT ||--o{ INCIDENT : "concerne"
-    PRESTATAIRE |o--o{ INCIDENT : "prend en charge"
-    INCIDENT ||--o| EVALUATION : "est évalué par"
-    UTILISATEUR ||--o{ INCIDENT : "déclare"
+Notation Merise : rectangles = entités, ovales = associations, cardinalités (min,max) écrites du côté
+de l'entité. Exemple : une station contient 0 à n équipements ; un équipement est dans 1 et 1 seule station.
 
-    STATION {
-        Long id PK
-        String nom
-    }
-    EQUIPEMENT {
-        Long id PK
-        String reference UK "RG9"
-        String libelle
-        TypeEquipement type
-        EtatEquipement etat
-        Long station_id FK
-    }
-    INCIDENT {
-        Long id PK
-        Long equipement_id FK
-        String description
-        LocalDateTime dateOuverture
-        StatutIncident statut
-        Long prestataire_id FK "nullable"
-        LocalDateTime dateResolution "nullable"
-        Long declarant_id FK
-    }
-    PRESTATAIRE {
-        Long id PK
-        String nom
-        String email
-        String telephone
-    }
-    EVALUATION {
-        Long id PK
-        Long incident_id FK,UK "RG8 : une par incident"
-        int note "1 à 5"
-        String commentaire "nullable"
-        LocalDate date
-    }
-    UTILISATEUR {
-        Long id PK
-        String login UK
-        String motDePasse "haché BCrypt"
-        String prenom
-        Profil profil
-    }
+```mermaid
+flowchart LR
+    STATION["<b>STATION</b><hr/>id (PK)<br/>nom"]
+    EQUIPEMENT["<b>EQUIPEMENT</b><hr/>id (PK)<br/>reference (unique, RG9)<br/>libelle<br/>type<br/>etat"]
+    INCIDENT["<b>INCIDENT</b><hr/>id (PK)<br/>description<br/>dateOuverture<br/>statut<br/>dateResolution (nullable)"]
+    PRESTATAIRE["<b>PRESTATAIRE</b><hr/>id (PK)<br/>nom<br/>email<br/>telephone"]
+    EVALUATION["<b>EVALUATION</b><hr/>id (PK)<br/>note (1 à 5)<br/>commentaire (nullable)<br/>date"]
+    UTILISATEUR["<b>UTILISATEUR</b><hr/>id (PK)<br/>login (unique)<br/>motDePasse (haché BCrypt)<br/>prenom<br/>profil"]
+
+    CONTENIR([contient])
+    CONCERNER([concerne])
+    PRENDRE([prend en charge])
+    EVALUER([est évalué par])
+    DECLARER([déclare])
+
+    STATION ---|"0,n"| CONTENIR ---|"1,1"| EQUIPEMENT
+    EQUIPEMENT ---|"0,n"| CONCERNER ---|"1,1"| INCIDENT
+    PRESTATAIRE ---|"0,n"| PRENDRE ---|"0,1"| INCIDENT
+    INCIDENT ---|"0,1"| EVALUER ---|"1,1"| EVALUATION
+    UTILISATEUR ---|"0,n"| DECLARER ---|"1,1"| INCIDENT
 ```
 
 Enums :
