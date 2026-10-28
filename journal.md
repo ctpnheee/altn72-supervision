@@ -36,7 +36,41 @@ flowchart TB
 
 ## CHOIX TECHNIQUES
 
-- Profils et droits : à définir avec le groupe avant d'implémenter F1
+### Profils et droits
+
+Deux profils : **RESPONSABLE** (responsable d'exploitation, vision globale) et **AGENT** (signale les pannes
+sur le terrain). Toutes les restrictions sont appliquées côté serveur (RG11) : `requestMatchers` dans
+`SecurityConfig` et `@PreAuthorize` sur les services ; masquer un bouton n'est qu'un confort.
+
+| N° | Fonctionnalité | Profil 1 : RESPONSABLE | Profil 2 : AGENT |
+|---|---|---|---|
+| F2–F3 | Consulter équipements et fiches | Lecture seule | Lecture seule |
+| F4 | Déclarer un incident | Accès complet | Accès complet |
+| F5–F6 | Consulter / modifier un incident | Accès complet (description des incidents non résolus) | Lecture ; modification de la description de ses propres incidents non affectés |
+| F7 | Affecter ou réaffecter un prestataire | Accès complet | Interdit |
+| F8 | Déclarer un incident résolu | Accès complet | Interdit |
+| F9 | Consulter l'historique | Lecture seule | Lecture seule |
+| F10 | Évaluer un prestataire | Accès complet | Interdit |
+| F11 | Tableau de bord | Accès complet | Interdit |
+| F12 | API REST | Accès complet | Lecture seule |
+
+Justification de F6 : l'agent qui a signalé une panne peut corriger sa description tant que personne ne l'a
+prise en charge ; une fois l'incident affecté, seul le responsable la modifie, pour que le prestataire
+travaille sur une information stable.
+
+### Choix de conception validés (session de lancement du 28/10/2026)
+
+- Un incident peut être résolu sans avoir été affecté (panne réglée en interne) ; il n'est alors pas
+  évaluable, puisque RG8 exige un prestataire.
+- Déclarer un incident passe l'équipement à `EN_PANNE` ; résoudre son dernier incident ouvert le repasse
+  à `EN_SERVICE`. Ces opérations modifient deux entités et sont donc `@Transactional` (RG10).
+- Le niveau d'attention (vert, orange, rouge, pris en charge) est calculé à la lecture à partir d'un
+  `java.time.Clock` injecté ; il n'est jamais stocké.
+- Organisation : pas de rôles figés, chacun s'assigne les tickets GitHub au fil de l'eau ; toute modification
+  passe par une pull request dont la CI (`./mvnw verify`) doit être verte.
+
+### Autres choix
+
 - Exceptions : à choisir et justifier
 - SOLID : à choisir, implémenter et justifier
 - Requête SQL native : à ajouter une seule fois puis analyser
