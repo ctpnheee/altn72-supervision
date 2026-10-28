@@ -58,7 +58,7 @@ Justification de F6 : l'agent qui a signalé une panne peut corriger sa descript
 prise en charge ; une fois l'incident affecté, seul le responsable la modifie, pour que le prestataire
 travaille sur une information stable.
 
-### Choix de conception validés (session de lancement du 28/10/2026)
+### Choix de conception validés
 
 - Un incident peut être résolu sans avoir été affecté (panne réglée en interne) ; il n'est alors pas
   évaluable, puisque RG8 exige un prestataire.
