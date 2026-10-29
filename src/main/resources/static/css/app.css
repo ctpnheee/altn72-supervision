@@ -220,6 +220,43 @@ main > section {
 	background: var(--fond-erreur);
 }
 
+/* Formulaires */
+.formulaire {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	max-width: 24rem;
+}
+
+.formulaire label {
+	margin-top: 0.5rem;
+	font-weight: 600;
+}
+
+.formulaire input {
+	padding: 0.625rem 0.75rem;
+	border: 1px solid var(--couleur-bordure);
+	border-radius: 6px;
+	font: inherit;
+}
+
+.bouton {
+	margin-top: 1rem;
+	padding: 0.625rem 1.25rem;
+	border: 0;
+	border-radius: 6px;
+	background: var(--couleur-principale);
+	color: #fff;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.bouton:hover {
+	background: var(--couleur-principale-claire);
+}
+
 /* Badges des niveaux d'attention : toujours accompagnés d'un libellé texte */
 .badge {
 	display: inline-block;

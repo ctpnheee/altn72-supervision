@@ -24,9 +24,9 @@
         <img class="logo" th:src="@{/img/logo.svg}" alt="" width="36" height="36">
         <span th:text="#{app.nom}">Supervision</span>
     </a>
-    <!-- Emplacement de l'en-tête utilisateur (F1) : le ticket B1 y affichera « Bonjour Prénom (profil) ». -->
     <div class="utilisateur" sec:authorize="isAuthenticated()">
-        <span>Bonjour <span sec:authentication="name">utilisateur</span></span>
+        <span>Bonjour <span sec:authentication="principal.prenom">Prénom</span>
+            (<span th:text="${#strings.capitalize(#strings.toLowerCase(#authentication.principal.profil))}">Profil</span>)</span>
         <span aria-hidden="true">|</span>
         <form th:action="@{/logout}" method="post">
             <button type="submit" class="bouton-lien">Déconnectez-vous</button>
