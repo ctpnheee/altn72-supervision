@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+  Gabarit commun à toutes les pages. Une page l'utilise ainsi :
+    <html lang="fr" xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: page('Titre de la page', ~{::section})}">
+  Son contenu tient dans un unique élément <section>.
+  L'en-tête, le menu, les messages et le pied sont aussi des fragments nommés, réutilisables seuls.
+-->
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="page(titre, contenu)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titre} + ' · ' + #{app.nom}">Supervision</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<a class="lien-evitement" href="#contenu">Aller au contenu</a>
+
+<header class="entete" th:fragment="entete">
+    <a class="marque" th:href="@{/}">
+        <img class="logo" th:src="@{/img/logo.svg}" alt="" width="36" height="36">
+        <span th:text="#{app.nom}">Supervision</span>
+    </a>
+    <!-- Emplacement de l'en-tête utilisateur (F1) : le ticket B1 y affichera « Bonjour Prénom (profil) ». -->
+    <div class="utilisateur" sec:authorize="isAuthenticated()">
+        <span>Bonjour <span sec:authentication="name">utilisateur</span></span>
+        <span aria-hidden="true">|</span>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="bouton-lien">Déconnectez-vous</button>
+        </form>
+    </div>
+</header>
+
+<nav class="menu" th:fragment="menu" aria-label="Navigation principale" sec:authorize="isAuthenticated()">
+    <ul>
+        <li><a th:href="@{/stations}">Stations</a></li>
+        <li><a th:href="@{/historique}">Historique</a></li>
+        <li sec:authorize="hasRole('RESPONSABLE')"><a th:href="@{/tableau-de-bord}">Tableau de bord</a></li>
+    </ul>
+</nav>
+
+<main id="contenu">
+    <div class="messages" th:fragment="messages" aria-live="polite">
+        <p class="message message-succes" role="status" th:if="${succes}" th:text="${succes}"></p>
+        <p class="message message-erreur" role="alert" th:if="${erreur}" th:text="${erreur}"></p>
+    </div>
+
+    <th:block th:replace="${contenu}"></th:block>
+</main>
+
+<footer class="pied" th:fragment="pied">
+    <span th:text="#{app.nom}">Supervision</span> · Projet ALTN72 · EFREI
+</footer>
+</body>
+</html>
