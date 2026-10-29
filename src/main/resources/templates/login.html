@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Connexion', ~{::section})}">
+<head>
+    <title>Connexion</title>
+</head>
+<body>
+<section class="connexion">
+    <h1>Connexion</h1>
+    <p>Identifiez-vous pour accéder à la supervision des équipements.</p>
+
+    <p class="message message-erreur" role="alert" th:if="${param.error}">
+        Identifiant ou mot de passe incorrect.
+    </p>
+    <p class="message message-succes" role="status" th:if="${param.logout}">
+        Vous êtes déconnecté.
+    </p>
+
+    <form class="formulaire" th:action="@{/login}" method="post">
+        <label for="username">Identifiant</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+        <button type="submit" class="bouton">Se connecter</button>
+    </form>
+</section>
+</body>
+</html>
