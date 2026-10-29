@@ -72,7 +72,20 @@ travaille sur une information stable.
 
 ### Autres choix
 
-- Exceptions : à choisir et justifier
+- Exceptions : exceptions métier dans `exception/` (`RessourceIntrouvableException`,
+  `TransitionInterditeException`, `EvaluationDejaSaisieException`), avec un message en français, traduites
+  en réponses `ProblemDetail` par un `@RestControllerAdvice` (`api/ApiExceptionHandler`) : 404 ressource
+  introuvable, 409 transition interdite ou évaluation déjà saisie, 400 donnée invalide (avec le champ en cause).
+  Choix de `@ControllerAdvice` plutôt que `ResponseStatusException` :
+  - la traduction vers HTTP est écrite à un seul endroit ; changer un code ou un format de message ne touche
+    qu'une classe ;
+  - les services ignorent HTTP (règle de dépendance de la couche service) : ils lèvent une exception qui dit
+    ce qui s'est passé, sans choisir de code, et restent testables sans contexte web ;
+  - avec `ResponseStatusException`, chaque service devrait connaître les codes HTTP et ses messages seraient
+    dispersés dans tout le code ;
+  - une même exception métier peut être traduite différemment selon l'origine : JSON pour l'API, page ou
+    message flash pour les pages (ticket B3).
+  Aucune trace technique n'est renvoyée : seul le message en français l'est. Pas de `catch` vide.
 - SOLID : à choisir, implémenter et justifier
 - Requête SQL native : à ajouter une seule fois puis analyser
 - `@Transactional` : à ajouter uniquement sur les opérations métier atomiques
