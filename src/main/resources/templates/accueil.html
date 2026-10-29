@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Accueil', ~{::section})}">
+<head>
+    <title>Accueil</title>
+</head>
+<body>
+<section>
+    <h1>Supervision des équipements</h1>
+    <p>Suivez l'état des équipements du réseau et la prise en charge des incidents.</p>
+
+    <h2>Niveaux d'attention</h2>
+    <p>Chaque incident actif porte un niveau, toujours indiqué par un libellé en plus de sa couleur.</p>
+    <ul class="legende">
+        <li><span class="badge badge-vert">Vert</span> Incident récent, en attente d'affectation</li>
+        <li><span class="badge badge-orange">Orange</span> Incident en attente depuis un certain temps</li>
+        <li><span class="badge badge-rouge">Rouge</span> Incident en attente depuis longtemps</li>
+        <li><span class="badge badge-pris-en-charge">Pris en charge</span> Un prestataire est affecté</li>
+    </ul>
+</section>
+</body>
+</html>
