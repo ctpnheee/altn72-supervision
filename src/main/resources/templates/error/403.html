@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Accès refusé', ~{::section})}">
+<head>
+    <title>Accès refusé</title>
+</head>
+<body>
+<section>
+    <h1>Accès refusé</h1>
+    <p>Votre profil ne vous autorise pas à consulter cette page ou à effectuer cette action.</p>
+    <p><a th:href="@{/}">Retour à l'accueil</a></p>
+</section>
+</body>
+</html>
