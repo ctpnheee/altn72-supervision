@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Erreur', ~{::section})}">
+<head>
+    <title>Erreur</title>
+</head>
+<body>
+<section>
+    <h1>Une erreur est survenue</h1>
+    <p>L'opération n'a pas pu aboutir. Réessayez dans quelques instants ; si le problème persiste, contactez le responsable.</p>
+    <p><a th:href="@{/}">Retour à l'accueil</a></p>
+</section>
+</body>
+</html>
