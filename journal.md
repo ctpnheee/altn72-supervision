@@ -4,12 +4,13 @@
 
 ## README
 
-- Prérequis : Java 21, Maven Wrapper et MySQL 8.4 installé localement
-- Initialiser la base : créer la base MySQL `supervision` et configurer les variables d'environnement
-- Lancer : `./mvnw spring-boot:run`
+- Prérequis : Java 21, Maven Wrapper et MySQL 8.4 installé localement (avec MariaDB, voir le README du dépôt)
+- Initialiser la base : créer la base et l'utilisateur MySQL `supervision` (commandes SQL dans `README.md`) ;
+  les tables sont créées par Hibernate au premier lancement
+- Lancer : `./mvnw spring-boot:run`, puis ouvrir http://localhost:8080 (connexion obligatoire)
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
-- Comptes de test : à compléter
-- Limites connues : le dépôt contient actuellement le socle technique
+- Comptes de test : à compléter avec les deux comptes créés par les données de démonstration (ticket A3)
+- Limites connues : modèle, connexion par profil et layout en place ; les fonctionnalités F2 à F12 restent à développer
 
 ## ARCHITECTURE
 
