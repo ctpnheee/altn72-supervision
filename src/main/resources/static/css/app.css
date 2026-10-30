@@ -233,11 +233,42 @@ main > section {
 	font-weight: 600;
 }
 
-.formulaire input {
+.formulaire-large {
+	max-width: 40rem;
+}
+
+.formulaire input,
+.formulaire select,
+.formulaire textarea {
+	width: 100%;
 	padding: 0.625rem 0.75rem;
 	border: 1px solid var(--couleur-bordure);
 	border-radius: 6px;
+	background: #fff;
 	font: inherit;
+}
+
+.formulaire textarea {
+	min-height: 8rem;
+	resize: vertical;
+}
+
+.formulaire input:focus-visible,
+.formulaire select:focus-visible,
+.formulaire textarea:focus-visible {
+	outline: 2px solid var(--couleur-accent);
+	outline-offset: 1px;
+	border-color: var(--couleur-accent);
+}
+
+.champ-invalide {
+	border-color: var(--niveau-rouge);
+}
+
+.erreur-champ {
+	margin: 0;
+	color: var(--niveau-rouge);
+	font-size: 0.875rem;
 }
 
 .bouton {

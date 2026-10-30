@@ -18,4 +18,12 @@ public interface EquipementRepository extends JpaRepository<Equipement, Long> {
 	/** {@code join fetch} charge la station dans la même requête : la vue n'a plus besoin de la base. */
 	@Query("select e from Equipement e join fetch e.station where e.id = :id")
 	Optional<Equipement> findAvecStationParId(@Param("id") Long id);
+
+	/** Formulaire de déclaration : chaque équipement avec sa station, trié pour l'affichage. */
+	@Query("""
+			select e from Equipement e
+			join fetch e.station
+			order by e.station.nom asc, e.reference asc
+			""")
+	List<Equipement> findAllAvecStation();
 }
