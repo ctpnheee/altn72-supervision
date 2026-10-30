@@ -1,14 +1,24 @@
+
 <!DOCTYPE html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: page('Page introuvable', ~{::section})}">
+      th:replace="~{layout :: page('Erreur 404', ~{::section})}">
 <head>
-    <title>Page introuvable</title>
+    <title>Erreur 404</title>
 </head>
 <body>
 <section>
-    <h1>Page introuvable</h1>
-    <p>La page demandée n'existe pas ou a été déplacée.</p>
-    <p><a th:href="@{/}">Retour à l'accueil</a></p>
+    <h1>Erreur 404 — Page introuvable</h1>
+
+    <p>
+        La page ou la ressource demandée n'existe pas.
+        Vérifiez l'adresse saisie.
+    </p>
+
+    <p><strong>Code HTTP : 404 — Not Found</strong></p>
+
+    <p>
+        <a th:href="@{/}">Retour à l'accueil</a>
+    </p>
 </section>
 </body>
 </html>
