@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout et données de démo en place ; les fonctionnalités F2 à F12 restent à développer
+- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration d'un incident (F4) est disponible ; F5 à F12 restent à développer
 
 ## ARCHITECTURE
 
@@ -89,7 +89,8 @@ travaille sur une information stable.
   Aucune trace technique n'est renvoyée : seul le message en français l'est. Pas de `catch` vide.
 - SOLID : à choisir, implémenter et justifier
 - Requête SQL native : à ajouter une seule fois puis analyser
-- `@Transactional` : à ajouter uniquement sur les opérations métier atomiques
+- `@Transactional` : posé sur `IncidentService.declarer`, qui enregistre l'incident et passe l'équipement
+  à `EN_PANNE` dans la même transaction (RG10). Résoudre le dernier incident ouvert sera traité de la même façon.
 
 ## LOT ALPHA
 
