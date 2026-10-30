@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Équipements de la station', ~{::section})}">
+<head>
+    <title>Équipements</title>
+</head>
+<body>
+<section>
+    <p>
+        <a th:href="@{/stations}">
+            Retour aux stations
+        </a>
+    </p>
+
+    <h1>
+        Équipements —
+        <span th:text="${station.nom}">Station</span>
+    </h1>
+
+    <p th:if="${#lists.isEmpty(station.equipements)}">
+        Aucun équipement dans cette station.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(station.equipements)}">
+        <thead>
+        <tr>
+            <th>Référence</th>
+            <th>Libellé</th>
+            <th>Type</th>
+            <th>État</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="equipement : ${station.equipements}">
+            <td th:text="${equipement.reference}">
+                ASC-001
+            </td>
+
+            <td th:text="${equipement.libelle}">
+                Ascenseur
+            </td>
+
+            <td th:text="${equipement.type}">
+                ASCENSEUR
+            </td>
+
+            <td>
+                <span th:if="${equipement.etat.name() == 'EN_SERVICE'}"
+                      class="badge badge-vert">
+                    En service
+                </span>
+
+                <span th:unless="${equipement.etat.name() == 'EN_SERVICE'}"
+                      class="badge badge-rouge">
+                    En panne
+                </span>
+            </td>
+
+            <td>
+                <a th:href="@{/equipements/{id}(
+                    id=${equipement.id})}">
+                    Voir la fiche
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

@@ -1,0 +1,81 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Fiche équipement', ~{::section})}">
+<head>
+    <title>Fiche équipement</title>
+</head>
+<body>
+<section>
+    <p>
+        <a th:href="@{/stations/{id}/equipements(
+            id=${equipement.stationId})}">
+            Retour aux équipements
+        </a>
+    </p>
+
+    <h1 th:text="${equipement.libelle}">
+        Équipement
+    </h1>
+
+    <h2>Informations générales</h2>
+
+    <dl>
+        <dt>Référence</dt>
+        <dd th:text="${equipement.reference}">ASC-001</dd>
+
+        <dt>Type</dt>
+        <dd th:text="${equipement.type}">ASCENSEUR</dd>
+
+        <dt>Station</dt>
+        <dd th:text="${equipement.stationNom}">Châtelet</dd>
+
+        <dt>État de fonctionnement</dt>
+        <dd th:text="${equipement.etat}">EN_SERVICE</dd>
+    </dl>
+
+    <h2>Historique des incidents</h2>
+
+    <p th:if="${#lists.isEmpty(equipement.incidents)}">
+        Aucun incident enregistré pour cet équipement.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(equipement.incidents)}">
+        <thead>
+        <tr>
+            <th>Date d'ouverture</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Détail</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="incident : ${equipement.incidents}">
+            <td th:text="${#temporals.format(
+                incident.dateOuverture,
+                'dd/MM/yyyy HH:mm')}">
+                30/10/2026 12:00
+            </td>
+
+            <td th:text="${incident.description}">
+                Description
+            </td>
+
+            <td th:text="${incident.statut}">
+                NON_AFFECTE
+            </td>
+
+            <td>
+                <a th:href="@{/incidents/{id}(
+                    id=${incident.id})}">
+                    Voir l'incident
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

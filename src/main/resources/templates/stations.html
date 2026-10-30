@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Stations', ~{::section})}">
+<head>
+    <title>Stations</title>
+</head>
+<body>
+<section>
+    <h1>Stations du réseau</h1>
+    <p>Choisissez une station pour consulter ses équipements.</p>
+
+    <p th:if="${#lists.isEmpty(stations)}">
+        Aucune station disponible.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(stations)}">
+        <thead>
+        <tr>
+            <th>Station</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="station : ${stations}">
+            <td th:text="${station.nom}">Station</td>
+            <td>
+                <a th:href="@{/stations/{id}/equipements(
+                    id=${station.id})}">
+                    Voir les équipements
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>
