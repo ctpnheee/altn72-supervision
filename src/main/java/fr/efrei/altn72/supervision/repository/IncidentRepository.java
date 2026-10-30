@@ -8,8 +8,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import fr.efrei.altn72.supervision.model.Incident;
+import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
+
+	List<Incident> findByStatut(StatutIncident statut);
+
+	long countByStatut(StatutIncident statut);
 
 	/** Fiche d'un équipement : incidents du plus récent au plus ancien (RG7). */
 	List<Incident> findByEquipementIdOrderByDateOuvertureDesc(Long equipementId);

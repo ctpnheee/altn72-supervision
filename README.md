@@ -48,14 +48,20 @@ Toutes les pages exigent une connexion (formulaire sur `/login`). Deux profils e
 | `RESPONSABLE` | Tous, y compris le tableau de bord |
 | `AGENT` | Consultation et déclaration d'incidents ; pas d'affectation, de résolution ni de tableau de bord |
 
-Il n'y a pas d'inscription : les comptes viennent des données de démonstration (ticket A3).
-Les mots de passe sont stockés hachés avec BCrypt, jamais en clair.
+Il n'y a pas d'inscription : les comptes viennent des données de démonstration,
+chargées au démarrage si la base est vide. Les mots de passe sont stockés hachés
+avec BCrypt, jamais en clair.
 
-Avant A3, pour tester en local, insérer un compte dont le mot de passe est un hachage BCrypt :
+| Login | Mot de passe | Profil |
+|---|---|---|
+| `responsable` | `demo1234` | RESPONSABLE (Alice) |
+| `agent` | `demo1234` | AGENT (Bruno) |
 
-```sql
-INSERT INTO utilisateur (login, mot_de_passe, prenom, profil)
-VALUES ('test', '<hachage BCrypt>', 'Alice', 'RESPONSABLE');
+Les dates des incidents sont calculées par rapport à l'heure de démarrage (2 h, 47 h, 48 h, 71 h, 72 h, 100 h)
+pour que chaque niveau d'attention soit visible. Pour recréer un jeu frais (par exemple juste avant une démo) :
+
+```bash
+APP_DEMO_RESET=true ./mvnw spring-boot:run
 ```
 
 ## Tests
