@@ -6,19 +6,23 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import fr.efrei.altn72.supervision.config.UtilisateurConnecte;
 import fr.efrei.altn72.supervision.service.IncidentService;
+import fr.efrei.altn72.supervision.service.IncidentService.DetailIncident;
 import fr.efrei.altn72.supervision.web.dto.DeclarationIncidentForm;
+import fr.efrei.altn72.supervision.web.dto.ModificationDescriptionForm;
 import jakarta.validation.Valid;
 
-/** Pages du cycle de vie d'un incident. La déclaration (F4) vit sous {@code /incidents/nouveau}. */
+/** Pages du cycle de vie d'un incident : déclaration (F4) et détail (F5, F6). */
 @Controller
 public class IncidentController {
 
 	static final String VUE_DECLARATION = "incident/declarer";
+	static final String VUE_DETAIL = "incident/detail";
 
 	private final IncidentService incidentService;
 
@@ -43,5 +47,31 @@ public class IncidentController {
 		incidentService.declarer(declaration.getEquipementId(), declaration.getDescription(), connecte.getUsername());
 		redirection.addFlashAttribute("succes", "Incident déclaré.");
 		return "redirect:/incidents/nouveau";
+	}
+
+	@GetMapping("/incidents/{id}")
+	String detail(@PathVariable Long id, @AuthenticationPrincipal UtilisateurConnecte connecte, Model model) {
+		DetailIncident detail = incidentService.consulter(id, connecte.getUsername());
+		model.addAttribute("detail", detail);
+		if (!model.containsAttribute("modification")) {
+			ModificationDescriptionForm modification = new ModificationDescriptionForm();
+			modification.setDescription(detail.description());
+			model.addAttribute("modification", modification);
+		}
+		return VUE_DETAIL;
+	}
+
+	@PostMapping("/incidents/{id}/description")
+	String modifier(@PathVariable Long id,
+			@Valid @ModelAttribute("modification") ModificationDescriptionForm modification, BindingResult erreurs,
+			@AuthenticationPrincipal UtilisateurConnecte connecte, Model model, RedirectAttributes redirection) {
+		if (erreurs.hasErrors()) {
+			incidentService.controlerDroitModification(id, connecte.getUsername());
+			model.addAttribute("detail", incidentService.consulter(id, connecte.getUsername()));
+			return VUE_DETAIL;
+		}
+		incidentService.modifierDescription(id, modification.getDescription(), connecte.getUsername());
+		redirection.addFlashAttribute("succes", "Description mise à jour.");
+		return "redirect:/incidents/" + id;
 	}
 }

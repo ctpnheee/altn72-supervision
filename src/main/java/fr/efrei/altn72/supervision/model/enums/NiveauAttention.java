@@ -10,5 +10,15 @@ public enum NiveauAttention {
     VERT,
     ORANGE,
     ROUGE,
-    PRIS_EN_CHARGE
+    PRIS_EN_CHARGE;
+
+    /** Libellé affiché à côté du badge. */
+    public String getLibelle() {
+        return switch (this) {
+            case VERT -> "Vert";
+            case ORANGE -> "Orange";
+            case ROUGE -> "Rouge";
+            case PRIS_EN_CHARGE -> "Pris en charge";
+        };
+    }
 }

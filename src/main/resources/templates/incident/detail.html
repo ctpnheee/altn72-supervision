@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Incident', ~{::section})}">
+<head>
+    <title>Incident</title>
+</head>
+<body>
+<section>
+    <p>
+        <a th:href="@{/equipements/{id}(id=${detail.equipementId})}">Retour à la fiche équipement</a>
+    </p>
+
+    <h1>Incident</h1>
+    <p>
+        <a th:href="@{/equipements/{id}(id=${detail.equipementId})}"
+           th:text="${detail.equipementReference} + ' · ' + ${detail.equipementLibelle}">ASC-001 · Ascenseur</a>
+        — <span th:text="${detail.stationNom}">Châtelet</span>
+    </p>
+
+    <dl class="fiche">
+        <dt>Statut</dt>
+        <dd th:text="${detail.statut.libelle}">Non affecté</dd>
+
+        <th:block th:if="${detail.niveau != null}">
+            <dt>Niveau d'attention</dt>
+            <dd>
+                <span th:class="|badge badge-${#strings.toLowerCase(#strings.replace(detail.niveau.name(), '_', '-'))}|"
+                      th:text="${detail.niveau.libelle}">Vert</span>
+            </dd>
+        </th:block>
+
+        <dt>Signalé par</dt>
+        <dd th:text="${detail.declarantPrenom}">Alice</dd>
+
+        <dt>Date d'ouverture</dt>
+        <dd th:text="${#temporals.format(detail.dateOuverture, 'dd/MM/yyyy HH:mm')}">28/10/2026 13:00</dd>
+
+        <th:block th:if="${detail.dateResolution != null}">
+            <dt>Date de résolution</dt>
+            <dd th:text="${#temporals.format(detail.dateResolution, 'dd/MM/yyyy HH:mm')}">29/10/2026 13:00</dd>
+        </th:block>
+
+        <dt>Durée d'ouverture</dt>
+        <dd>
+            <span th:text="${detail.dureeOuverture}">47 h</span>
+            <span class="aide" th:text="${detail.precisionDuree}">Depuis l'ouverture</span>
+        </dd>
+    </dl>
+
+    <h2>Description</h2>
+    <p th:unless="${detail.descriptionModifiable}" class="description" th:text="${detail.description}">Porte bloquée</p>
+
+    <form th:if="${detail.descriptionModifiable}" class="formulaire formulaire-large"
+          th:action="@{/incidents/{id}/description(id=${detail.id})}" th:object="${modification}" method="post">
+        <p class="aide" th:if="${detail.consigneModification}" th:text="${detail.consigneModification}">Consigne</p>
+        <label for="description">Description</label>
+        <textarea id="description" th:field="*{description}" th:errorclass="champ-invalide"
+                  rows="5" maxlength="1000" required></textarea>
+        <p class="erreur-champ" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">Erreur</p>
+        <button type="submit" class="bouton">Enregistrer la description</button>
+    </form>
+
+    <h2>Prestataire</h2>
+    <p th:if="${detail.prestataireNom == null}">Aucun prestataire n'est affecté.</p>
+    <dl th:if="${detail.prestataireNom != null}" class="fiche">
+        <dt>Nom</dt>
+        <dd th:text="${detail.prestataireNom}">Otis</dd>
+        <dt>E-mail</dt>
+        <dd th:text="${detail.prestataireEmail}">otis@example.org</dd>
+        <dt>Téléphone</dt>
+        <dd th:text="${detail.prestataireTelephone}">0140000001</dd>
+    </dl>
+
+    <h2>Évaluation</h2>
+    <p th:if="${detail.note == null}">Aucune évaluation.</p>
+    <dl th:if="${detail.note != null}" class="fiche">
+        <dt>Note</dt>
+        <dd th:text="${detail.note} + ' / 5'">4 / 5</dd>
+        <th:block th:if="${detail.commentaireEvaluation != null}">
+            <dt>Commentaire</dt>
+            <dd th:text="${detail.commentaireEvaluation}">Intervention rapide</dd>
+        </th:block>
+        <th:block th:if="${detail.dateEvaluation != null}">
+            <dt>Date</dt>
+            <dd th:text="${#temporals.format(detail.dateEvaluation, 'dd/MM/yyyy HH:mm')}">29/10/2026 18:00</dd>
+        </th:block>
+    </dl>
+</section>
+</body>
+</html>

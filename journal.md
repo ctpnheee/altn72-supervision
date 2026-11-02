@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration d'un incident (F4) est disponible ; F5 à F12 restent à développer
+- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5) et la modification de la description d'un incident (F6) sont disponibles ; F7 à F12 restent à développer
 
 ## ARCHITECTURE
 
@@ -91,6 +91,18 @@ travaille sur une information stable.
 - Requête SQL native : à ajouter une seule fois puis analyser
 - `@Transactional` : posé sur `IncidentService.declarer`, qui enregistre l'incident et passe l'équipement
   à `EN_PANNE` dans la même transaction (RG10). Résoudre le dernier incident ouvert sera traité de la même façon.
+  Posé aussi sur `modifierDescription` : le contrôle du droit relit le statut et le déclarant, puis écrit
+  la description. Sans cette transaction, une affectation intercalée laisserait enregistrer la correction d'un agent.
+  `consulter` est en lecture seule : `open-in-view` est désactivé, et le détail doit lire l'incident, le prestataire
+  et l'évaluation dans la même vue.
+- Durée d'ouverture (F5) : calculée dans `IncidentService` avec le `Clock` injecté (incident ouvert : maintenant −
+  ouverture ; incident résolu : résolution − ouverture). La vue reçoit une chaîne déjà prête. Sans cela, le template
+  comparerait des dates, ce que l'architecture interdit, et un test ne pourrait pas fixer l'instant.
+- Droit de modifier la description (F6, RG11) : `@PreAuthorize` sur `modifierDescription` et
+  `controlerDroitModification`, délégué à `AutorisationsIncident`. Un `requestMatchers` ne distingue pas un incident
+  affecté d'un incident ouvert. Masquer le formulaire ne suffit pas : un POST direct d'un agent sur un incident
+  affecté répond 403. La même règle est rejouée dans la transaction, pour le cas où l'incident est affecté entre
+  le contrôle de sécurité et l'écriture.
 
 ## LOT ALPHA
 
