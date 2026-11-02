@@ -70,6 +70,27 @@
         <dt>Téléphone</dt>
         <dd th:text="${detail.prestataireTelephone}">0140000001</dd>
     </dl>
+    <p class="aide" th:if="${detail.consignePilotage}" th:text="${detail.consignePilotage}">Consigne</p>
+
+    <form th:if="${detail.peutAffecterOuResoudre}" class="formulaire"
+          th:action="@{/incidents/{id}/prestataire(id=${detail.id})}" th:object="${affectation}" method="post">
+        <label for="prestataireId">Prestataire</label>
+        <select id="prestataireId" th:field="*{prestataireId}" th:errorclass="champ-invalide" required>
+            <option value="">Choisir un prestataire</option>
+            <option th:each="prestataire : ${detail.prestataires}"
+                    th:value="${prestataire.id}" th:text="${prestataire.nom}">Otis</option>
+        </select>
+        <p class="erreur-champ" th:if="${#fields.hasErrors('prestataireId')}" th:errors="*{prestataireId}">Erreur</p>
+        <button type="submit" class="bouton" th:text="${detail.libelleAffectation}">Affecter le prestataire</button>
+    </form>
+
+    <th:block th:if="${detail.peutAffecterOuResoudre}">
+        <h2>Résolution</h2>
+        <p class="aide">La date de résolution est l'instant présent. S'il s'agit du dernier incident ouvert de l'équipement, celui-ci repasse en service.</p>
+        <form th:action="@{/incidents/{id}/resolution(id=${detail.id})}" method="post">
+            <button type="submit" class="bouton">Déclarer l'incident résolu</button>
+        </form>
+    </th:block>
 
     <h2>Évaluation</h2>
     <p th:if="${detail.note == null}">Aucune évaluation.</p>

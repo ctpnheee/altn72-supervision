@@ -1,6 +1,7 @@
 package fr.efrei.altn72.supervision.web;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -36,6 +37,7 @@ import fr.efrei.altn72.supervision.model.enums.Profil;
 import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.service.IncidentService;
 import fr.efrei.altn72.supervision.service.IncidentService.DetailIncident;
+import fr.efrei.altn72.supervision.service.IncidentService.PrestataireChoix;
 
 @WebMvcTest(IncidentController.class)
 class IncidentControllerTest {
@@ -114,7 +116,8 @@ class IncidentControllerTest {
 				.andExpect(content().string(containsString("Depuis l&#39;ouverture")))
 				.andExpect(content().string(containsString("Otis")))
 				.andExpect(content().string(containsString("Aucune évaluation")))
-				.andExpect(content().string(containsString("Enregistrer la description")));
+				.andExpect(content().string(containsString("Enregistrer la description")))
+				.andExpect(content().string(not(containsString("Déclarer l'incident résolu"))));
 	}
 
 	@Test
@@ -125,7 +128,9 @@ class IncidentControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("4 / 5")))
 				.andExpect(content().string(containsString("Aucun prestataire")))
-				.andExpect(content().string(org.hamcrest.Matchers.not(containsString("Enregistrer la description"))));
+				.andExpect(content().string(not(containsString("Enregistrer la description"))))
+				.andExpect(content().string(containsString("Seul le responsable")))
+				.andExpect(content().string(not(containsString("Déclarer l'incident résolu"))));
 	}
 
 	@Test
@@ -172,11 +177,83 @@ class IncidentControllerTest {
 		verify(incidentService).modifierDescription(12L, "Cabine arrêtée", "alice");
 	}
 
+	@Test
+	void leResponsableVoitLAffectationEtLaResolution() throws Exception {
+		when(incidentService.consulter(12L, "alice")).thenReturn(detail(true, null, null, true));
+
+		mockMvc.perform(get("/incidents/12").with(connecte(Profil.RESPONSABLE)))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Choisir un prestataire")))
+				.andExpect(content().string(containsString("Otis")))
+				.andExpect(content().string(containsString("Affecter le prestataire")))
+				.andExpect(content().string(containsString("Déclarer l'incident résolu")))
+				.andExpect(content().string(containsString("repasse en service")));
+	}
+
+	@Test
+	void unPrestataireAbsentEstReaffichePourLeResponsable() throws Exception {
+		when(incidentService.consulter(12L, "alice")).thenReturn(detail(true, null, null, true));
+
+		mockMvc.perform(post("/incidents/12/prestataire").with(connecte(Profil.RESPONSABLE)).with(csrf())
+						.param("prestataireId", ""))
+				.andExpect(status().isOk())
+				.andExpect(view().name("incident/detail"))
+				.andExpect(content().string(containsString("Choisissez un prestataire.")));
+		verify(incidentService).controlerDroitPilotage();
+		verify(incidentService, never()).affecter(any(), any());
+	}
+
+	@Test
+	void unPrestataireAbsentEstRefuseAUnAgent() throws Exception {
+		doThrow(new AuthorizationDeniedException("refus")).when(incidentService).controlerDroitPilotage();
+
+		mockMvc.perform(post("/incidents/12/prestataire").with(connecte(Profil.AGENT)).with(csrf())
+						.param("prestataireId", ""))
+				.andExpect(status().isForbidden())
+				.andExpect(content().string(containsString("Accès refusé")));
+		verify(incidentService, never()).affecter(any(), any());
+	}
+
+	@Test
+	void uneAffectationValideEstEnregistree() throws Exception {
+		mockMvc.perform(post("/incidents/12/prestataire").with(connecte(Profil.RESPONSABLE)).with(csrf())
+						.param("prestataireId", "5"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/incidents/12"))
+				.andExpect(flash().attribute("succes", "Prestataire affecté."));
+		verify(incidentService).affecter(12L, 5L);
+	}
+
+	@Test
+	void uneResolutionEstEnregistree() throws Exception {
+		mockMvc.perform(post("/incidents/12/resolution").with(connecte(Profil.RESPONSABLE)).with(csrf()))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/incidents/12"))
+				.andExpect(flash().attribute("succes", "Incident résolu."));
+		verify(incidentService).resoudre(12L);
+	}
+
+	@Test
+	void uneResolutionEstRefuseeAUnAgent() throws Exception {
+		doThrow(new AuthorizationDeniedException("refus")).when(incidentService).resoudre(12L);
+
+		mockMvc.perform(post("/incidents/12/resolution").with(connecte(Profil.AGENT)).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(content().string(containsString("Accès refusé")));
+	}
+
 	private static DetailIncident detail(boolean modifiable, String prestataire, Integer note) {
+		return detail(modifiable, prestataire, note, false);
+	}
+
+	private static DetailIncident detail(boolean modifiable, String prestataire, Integer note, boolean pilotage) {
 		return new DetailIncident(12L, "Porte bloquée", LocalDateTime.of(2026, 10, 28, 13, 0), null,
 				StatutIncident.NON_AFFECTE, "47 h", "Depuis l'ouverture", NiveauAttention.VERT, 3L, "ASC-001",
 				"Ascenseur quai A", "Châtelet", "Alice", prestataire, prestataire == null ? null : "otis@example.org",
 				prestataire == null ? null : "0140000001", note, note == null ? null : "Rapide", null, modifiable,
-				modifiable ? "Vous pouvez corriger la description." : null);
+				modifiable ? "Vous pouvez corriger la description." : null, pilotage,
+				pilotage ? null : "Seul le responsable peut affecter un prestataire ou résoudre l'incident.",
+				pilotage ? "Affecter le prestataire" : null,
+				pilotage ? List.of(new PrestataireChoix(5L, "Otis")) : List.of());
 	}
 }

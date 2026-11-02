@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import fr.efrei.altn72.supervision.config.AutorisationsIncident;
 import fr.efrei.altn72.supervision.exception.RessourceIntrouvableException;
+import fr.efrei.altn72.supervision.exception.TransitionInterditeException;
 import fr.efrei.altn72.supervision.model.Equipement;
 import fr.efrei.altn72.supervision.model.Evaluation;
 import fr.efrei.altn72.supervision.model.Incident;
@@ -24,30 +25,42 @@ import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.repository.EquipementRepository;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
+import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
 
-/** Cycle de vie des incidents : déclaration (F4), détail (F5) et description (F6). */
+/** Cycle de vie des incidents : déclaration (F4), détail (F5), description (F6), affectation (F7) et résolution (F8). */
 @Service
 public class IncidentService {
 
 	static final String MODIFICATION_REFUSEE = "Vous ne pouvez pas modifier la description de cet incident.";
+
+	static final String REAFFECTATION_REFUSEE = "Un incident résolu ne peut plus être réaffecté.";
+
+	static final String DEJA_RESOLU = "Cet incident est déjà résolu.";
+
+	static final String RESOLUTION_AVANT_OUVERTURE = "La date de résolution ne peut pas précéder la date d'ouverture.";
+
+	private static final String CONSIGNE_PILOTAGE = "Seul le responsable peut affecter un prestataire ou résoudre l'incident.";
 
 	private final Clock clock;
 	private final IncidentRepository incidentRepository;
 	private final EquipementRepository equipementRepository;
 	private final UtilisateurRepository utilisateurRepository;
 	private final EvaluationRepository evaluationRepository;
+	private final PrestataireRepository prestataireRepository;
 	private final NiveauAttentionCalculator niveauAttentionCalculator;
 	private final AutorisationsIncident autorisationsIncident;
 
 	public IncidentService(Clock clock, IncidentRepository incidentRepository, EquipementRepository equipementRepository,
 			UtilisateurRepository utilisateurRepository, EvaluationRepository evaluationRepository,
-			NiveauAttentionCalculator niveauAttentionCalculator, AutorisationsIncident autorisationsIncident) {
+			PrestataireRepository prestataireRepository, NiveauAttentionCalculator niveauAttentionCalculator,
+			AutorisationsIncident autorisationsIncident) {
 		this.clock = clock;
 		this.incidentRepository = incidentRepository;
 		this.equipementRepository = equipementRepository;
 		this.utilisateurRepository = utilisateurRepository;
 		this.evaluationRepository = evaluationRepository;
+		this.prestataireRepository = prestataireRepository;
 		this.niveauAttentionCalculator = niveauAttentionCalculator;
 		this.autorisationsIncident = autorisationsIncident;
 	}
@@ -61,7 +74,12 @@ public class IncidentService {
 			Long equipementId, String equipementReference, String equipementLibelle, String stationNom,
 			String declarantPrenom, String prestataireNom, String prestataireEmail, String prestataireTelephone,
 			Integer note, String commentaireEvaluation, LocalDateTime dateEvaluation, boolean descriptionModifiable,
-			String consigneModification) {
+			String consigneModification, boolean peutAffecterOuResoudre, String consignePilotage,
+			String libelleAffectation, List<PrestataireChoix> prestataires) {
+	}
+
+	/** Prestataire proposé dans la liste d'affectation. La vue n'a pas besoin de l'entité. */
+	public record PrestataireChoix(Long id, String nom) {
 	}
 
 	/** Équipements proposés à la déclaration, station déjà chargée pour la vue. */
@@ -99,7 +117,7 @@ public class IncidentService {
 		Incident incident = charger(id);
 		Evaluation evaluation = evaluationRepository.findByIncidentId(id).orElse(null);
 		boolean modifiable = autorisationsIncident.peutModifier(incident, login);
-		return versDetail(incident, evaluation, modifiable, consigne(login, modifiable));
+		return versDetail(incident, evaluation, modifiable, consigne(login, modifiable), pilotage(incident, login));
 	}
 
 	/**
@@ -126,6 +144,63 @@ public class IncidentService {
 		incidentRepository.save(incident);
 	}
 
+	/**
+	 * Affecte ou réaffecte un prestataire (F7). Un incident résolu ne change plus de prestataire (RG5).
+	 * La transaction relie la lecture du statut et l'écriture : {@code open-in-view} est désactivé,
+	 * donc sans elle l'incident serait détaché et {@code save} réécrirait toute la ligne, y compris
+	 * une résolution enregistrée entre-temps.
+	 */
+	@Transactional
+	@PreAuthorize("hasRole('RESPONSABLE')")
+	public Incident affecter(Long incidentId, Long prestataireId) {
+		Incident incident = charger(incidentId);
+		if (incident.getStatut() == StatutIncident.RESOLU) {
+			throw new TransitionInterditeException(REAFFECTATION_REFUSEE);
+		}
+		Prestataire prestataire = prestataireRepository.findById(prestataireId)
+				.orElseThrow(() -> new RessourceIntrouvableException("Prestataire " + prestataireId + " introuvable."));
+		incident.setPrestataire(prestataire);
+		incident.setStatut(StatutIncident.AFFECTE);
+		return incidentRepository.save(incident);
+	}
+
+	/**
+	 * Refuse avant de réafficher le formulaire (F7, F8). Sans cet appel, un agent qui envoie
+	 * un prestataire vide obtiendrait le formulaire au lieu d'un refus.
+	 */
+	@PreAuthorize("hasRole('RESPONSABLE')")
+	public void controlerDroitPilotage() {
+		// Le refus est porté par l'annotation : le profil est vérifié avant d'entrer ici.
+	}
+
+	/**
+	 * Résout l'incident à l'instant de l'horloge (F8, RG5). Si c'était le dernier incident ouvert
+	 * de l'équipement, celui-ci repasse en service. Les deux écritures partagent la transaction (RG10) :
+	 * sans elle, l'équipement peut rester en panne après une résolution réussie.
+	 */
+	@Transactional
+	@PreAuthorize("hasRole('RESPONSABLE')")
+	public Incident resoudre(Long incidentId) {
+		Incident incident = charger(incidentId);
+		if (incident.getStatut() == StatutIncident.RESOLU) {
+			throw new TransitionInterditeException(DEJA_RESOLU);
+		}
+		LocalDateTime resolution = LocalDateTime.ofInstant(clock.instant(), clock.getZone());
+		if (resolution.isBefore(incident.getDateOuverture())) {
+			throw new TransitionInterditeException(RESOLUTION_AVANT_OUVERTURE);
+		}
+		Equipement equipement = incident.getEquipement();
+		long encoreOuverts = incidentRepository.countByEquipementIdAndStatutNot(equipement.getId(),
+				StatutIncident.RESOLU);
+		if (encoreOuverts <= 1) {
+			equipement.setEtat(EtatEquipement.EN_SERVICE);
+			equipementRepository.save(equipement);
+		}
+		incident.setStatut(StatutIncident.RESOLU);
+		incident.setDateResolution(resolution);
+		return incidentRepository.save(incident);
+	}
+
 	private Incident incidentAutorise(Long id, String login) {
 		Incident incident = charger(id);
 		if (!autorisationsIncident.peutModifier(incident, login)) {
@@ -150,7 +225,29 @@ public class IncidentService {
 		return "Vous pouvez corriger la description tant que l'incident n'est pas résolu.";
 	}
 
-	private DetailIncident versDetail(Incident incident, Evaluation evaluation, boolean modifiable, String consigne) {
+	/**
+	 * Décide l'affichage des formulaires d'affectation et de résolution. La vue ne compare pas le statut :
+	 * elle reçoit un drapeau, le libellé du bouton et la liste des prestataires.
+	 */
+	private Pilotage pilotage(Incident incident, String login) {
+		if (incident.getStatut() == StatutIncident.RESOLU) {
+			return new Pilotage(false, null, null, List.of());
+		}
+		boolean responsable = utilisateurRepository.findByLogin(login)
+				.map(utilisateur -> utilisateur.getProfil() == Profil.RESPONSABLE)
+				.orElse(false);
+		if (!responsable) {
+			return new Pilotage(false, CONSIGNE_PILOTAGE, null, List.of());
+		}
+		List<PrestataireChoix> prestataires = prestataireRepository.findAllByOrderByNomAsc().stream()
+				.map(prestataire -> new PrestataireChoix(prestataire.getId(), prestataire.getNom()))
+				.toList();
+		String libelle = incident.getPrestataire() == null ? "Affecter le prestataire" : "Réaffecter le prestataire";
+		return new Pilotage(true, null, libelle, prestataires);
+	}
+
+	private DetailIncident versDetail(Incident incident, Evaluation evaluation, boolean modifiable, String consigne,
+			Pilotage pilotage) {
 		LocalDateTime maintenant = LocalDateTime.ofInstant(clock.instant(), clock.getZone());
 		boolean resolu = incident.getStatut() == StatutIncident.RESOLU;
 		LocalDateTime fin = resolu && incident.getDateResolution() != null ? incident.getDateResolution() : maintenant;
@@ -166,7 +263,12 @@ public class IncidentService {
 				prestataire == null ? null : prestataire.getTelephone(),
 				evaluation == null ? null : evaluation.getNote(),
 				evaluation == null ? null : evaluation.getCommentaire(),
-				evaluation == null ? null : evaluation.getDate(), modifiable, consigne);
+				evaluation == null ? null : evaluation.getDate(), modifiable, consigne, pilotage.autorise(),
+				pilotage.consigne(), pilotage.libelleAffectation(), pilotage.prestataires());
+	}
+
+	private record Pilotage(boolean autorise, String consigne, String libelleAffectation,
+			List<PrestataireChoix> prestataires) {
 	}
 
 	private static String formaterDuree(LocalDateTime debut, LocalDateTime fin) {

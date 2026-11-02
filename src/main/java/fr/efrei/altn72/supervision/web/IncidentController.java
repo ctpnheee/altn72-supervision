@@ -13,11 +13,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import fr.efrei.altn72.supervision.config.UtilisateurConnecte;
 import fr.efrei.altn72.supervision.service.IncidentService;
 import fr.efrei.altn72.supervision.service.IncidentService.DetailIncident;
+import fr.efrei.altn72.supervision.web.dto.AffectationForm;
 import fr.efrei.altn72.supervision.web.dto.DeclarationIncidentForm;
 import fr.efrei.altn72.supervision.web.dto.ModificationDescriptionForm;
 import jakarta.validation.Valid;
 
-/** Pages du cycle de vie d'un incident : déclaration (F4) et détail (F5, F6). */
+/** Pages du cycle de vie d'un incident : déclaration (F4), détail (F5, F6), affectation (F7) et résolution (F8). */
 @Controller
 public class IncidentController {
 
@@ -51,13 +52,7 @@ public class IncidentController {
 
 	@GetMapping("/incidents/{id}")
 	String detail(@PathVariable Long id, @AuthenticationPrincipal UtilisateurConnecte connecte, Model model) {
-		DetailIncident detail = incidentService.consulter(id, connecte.getUsername());
-		model.addAttribute("detail", detail);
-		if (!model.containsAttribute("modification")) {
-			ModificationDescriptionForm modification = new ModificationDescriptionForm();
-			modification.setDescription(detail.description());
-			model.addAttribute("modification", modification);
-		}
+		preparerDetail(id, connecte.getUsername(), model);
 		return VUE_DETAIL;
 	}
 
@@ -67,11 +62,46 @@ public class IncidentController {
 			@AuthenticationPrincipal UtilisateurConnecte connecte, Model model, RedirectAttributes redirection) {
 		if (erreurs.hasErrors()) {
 			incidentService.controlerDroitModification(id, connecte.getUsername());
-			model.addAttribute("detail", incidentService.consulter(id, connecte.getUsername()));
+			preparerDetail(id, connecte.getUsername(), model);
 			return VUE_DETAIL;
 		}
 		incidentService.modifierDescription(id, modification.getDescription(), connecte.getUsername());
 		redirection.addFlashAttribute("succes", "Description mise à jour.");
 		return "redirect:/incidents/" + id;
+	}
+
+	@PostMapping("/incidents/{id}/prestataire")
+	String affecter(@PathVariable Long id, @Valid @ModelAttribute("affectation") AffectationForm affectation,
+			BindingResult erreurs, @AuthenticationPrincipal UtilisateurConnecte connecte, Model model,
+			RedirectAttributes redirection) {
+		if (erreurs.hasErrors()) {
+			incidentService.controlerDroitPilotage();
+			preparerDetail(id, connecte.getUsername(), model);
+			return VUE_DETAIL;
+		}
+		incidentService.affecter(id, affectation.getPrestataireId());
+		redirection.addFlashAttribute("succes", "Prestataire affecté.");
+		return "redirect:/incidents/" + id;
+	}
+
+	/** La date vient de l'horloge du service : le formulaire n'a pas de champ. */
+	@PostMapping("/incidents/{id}/resolution")
+	String resoudre(@PathVariable Long id, RedirectAttributes redirection) {
+		incidentService.resoudre(id);
+		redirection.addFlashAttribute("succes", "Incident résolu.");
+		return "redirect:/incidents/" + id;
+	}
+
+	private void preparerDetail(Long id, String login, Model model) {
+		DetailIncident detail = incidentService.consulter(id, login);
+		model.addAttribute("detail", detail);
+		if (!model.containsAttribute("modification")) {
+			ModificationDescriptionForm modification = new ModificationDescriptionForm();
+			modification.setDescription(detail.description());
+			model.addAttribute("modification", modification);
+		}
+		if (!model.containsAttribute("affectation")) {
+			model.addAttribute("affectation", new AffectationForm());
+		}
 	}
 }
