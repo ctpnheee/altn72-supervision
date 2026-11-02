@@ -154,7 +154,9 @@ class IncidentDetailWebTest {
 				.andExpect(content().string(containsString("Pris en charge")))
 				.andExpect(content().string(containsString("Otis A6")))
 				.andExpect(content().string(containsString("Aucune évaluation")))
-				.andExpect(content().string(not(containsString("Enregistrer la description"))));
+				.andExpect(content().string(containsString("Seul le responsable")))
+				.andExpect(content().string(not(containsString("Enregistrer la description"))))
+				.andExpect(content().string(not(containsString("Déclarer l'incident résolu"))));
 
 		mockMvc.perform(get("/incidents/" + resolu.getId()).with(connecte(responsable)))
 				.andExpect(status().isOk())
@@ -162,7 +164,9 @@ class IncidentDetailWebTest {
 				.andExpect(content().string(containsString("Entre l&#39;ouverture et la résolution")))
 				.andExpect(content().string(containsString("4 / 5")))
 				.andExpect(content().string(containsString("Soignee")))
-				.andExpect(content().string(not(containsString("Enregistrer la description"))));
+				.andExpect(content().string(not(containsString("Enregistrer la description"))))
+				.andExpect(content().string(not(containsString("Déclarer l'incident résolu"))))
+				.andExpect(content().string(not(containsString("Seul le responsable"))));
 
 		mockMvc.perform(get("/incidents/" + ouvert.getId()).with(connecte(agent)))
 				.andExpect(content().string(containsString("47 h")))

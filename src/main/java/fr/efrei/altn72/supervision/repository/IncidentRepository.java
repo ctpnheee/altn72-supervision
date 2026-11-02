@@ -16,6 +16,12 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
 	long countByStatut(StatutIncident statut);
 
+	/**
+	 * Incidents encore ouverts d'un équipement. Le décompte est fait avant de passer
+	 * l'incident courant à {@code RESOLU} : sinon la requête ne le compterait plus.
+	 */
+	long countByEquipementIdAndStatutNot(Long equipementId, StatutIncident statut);
+
 	/** Fiche d'un équipement : incidents du plus récent au plus ancien (RG7). */
 	List<Incident> findByEquipementIdOrderByDateOuvertureDesc(Long equipementId);
 

@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5) et la modification de la description d'un incident (F6) sont disponibles ; F7 à F12 restent à développer
+- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7) et la résolution (F8) sont disponibles ; F9 à F12 restent à développer
 
 ## ARCHITECTURE
 
@@ -90,11 +90,16 @@ travaille sur une information stable.
 - SOLID : à choisir, implémenter et justifier
 - Requête SQL native : à ajouter une seule fois puis analyser
 - `@Transactional` : posé sur `IncidentService.declarer`, qui enregistre l'incident et passe l'équipement
-  à `EN_PANNE` dans la même transaction (RG10). Résoudre le dernier incident ouvert sera traité de la même façon.
+  à `EN_PANNE` dans la même transaction (RG10).
   Posé aussi sur `modifierDescription` : le contrôle du droit relit le statut et le déclarant, puis écrit
   la description. Sans cette transaction, une affectation intercalée laisserait enregistrer la correction d'un agent.
   `consulter` est en lecture seule : `open-in-view` est désactivé, et le détail doit lire l'incident, le prestataire
   et l'évaluation dans la même vue.
+  Posé sur `affecter` pour la même raison : sans transaction, l'incident chargé est détaché et `save` réécrit
+  toute la ligne. Une résolution enregistrée entre-temps serait écrasée.
+  Posé sur `resoudre` : l'incident passe à `RESOLU` et, s'il était le dernier incident ouvert de l'équipement,
+  l'équipement repasse `EN_SERVICE`. Les deux écritures doivent réussir ou échouer ensemble (RG10). Sans cela,
+  l'équipement peut rester `EN_PANNE` après une résolution réussie, ou `EN_SERVICE` après une résolution annulée.
 - Durée d'ouverture (F5) : calculée dans `IncidentService` avec le `Clock` injecté (incident ouvert : maintenant −
   ouverture ; incident résolu : résolution − ouverture). La vue reçoit une chaîne déjà prête. Sans cela, le template
   comparerait des dates, ce que l'architecture interdit, et un test ne pourrait pas fixer l'instant.
@@ -103,6 +108,24 @@ travaille sur une information stable.
   affecté d'un incident ouvert. Masquer le formulaire ne suffit pas : un POST direct d'un agent sur un incident
   affecté répond 403. La même règle est rejouée dans la transaction, pour le cas où l'incident est affecté entre
   le contrôle de sécurité et l'écriture.
+- Affectation et résolution (F7, F8, RG5, RG10, RG11) :
+  - Le décompte des incidents encore ouverts est fait avant de passer le statut à `RESOLU`. Sinon Hibernate
+    vide le contexte avant la requête et oublie l'incident en cours : l'équipement resterait `EN_PANNE`.
+  - L'instant de résolution vient du `Clock` injecté, pas d'un champ du formulaire. L'architecture expose
+    `resoudre(id)`. Un test fixe l'horloge avant l'ouverture et vérifie le refus (la date doit être ≥ l'ouverture).
+  - La règle vit dans le service. Le contrôleur valide `AffectationForm`, appelle le service et choisit la vue
+    ou la redirection. La vue ne compare pas le statut : elle affiche les formulaires seulement si
+    `peutAffecterOuResoudre` est vrai, avec un libellé déjà choisi (`Affecter` ou `Réaffecter`).
+  - `@Valid` sur `AffectationForm`, message « Choisissez un prestataire. » Un formulaire invalide est réaffiché.
+    Avant de le réafficher, `controlerDroitPilotage` vérifie le rôle : un agent qui envoie une liste vide reçoit
+    403, pas le formulaire.
+  - Un incident résolu lève `TransitionInterditeException` (« Un incident résolu ne peut plus être réaffecté. »,
+    « Cet incident est déjà résolu. »). Le gestionnaire pose le message en flash et renvoie à la page d'origine.
+  - `@PreAuthorize("hasRole('RESPONSABLE')")` sur `affecter`, `resoudre` et `controlerDroitPilotage`. Un
+    `requestMatchers` sur ces POST empêcherait aussi l'agent d'ouvrir le détail, puisque l'URL du détail est
+    la même page. Masquer le bouton ne suffit pas (RG11) : un POST direct d'un agent répond 403.
+  - `PrestataireRepository` est reçu par le constructeur, avec les autres dépôts et le `Clock` : un test unitaire
+    passe des simulacres et une horloge fixe.
 
 ## LOT ALPHA
 
