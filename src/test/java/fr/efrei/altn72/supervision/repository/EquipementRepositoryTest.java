@@ -71,6 +71,22 @@ class EquipementRepositoryTest {
 	}
 
 	@Test
+	void listeCompleteChargeLaStationEtTrieParStationPuisReference() {
+		Station nation = entityManager.persist(new Station("Nation"));
+		Station chatelet = entityManager.persist(new Station("Châtelet"));
+		entityManager.persist(new Equipement("PRT-020", "Portique 20", TypeEquipement.PORTIQUE, chatelet));
+		entityManager.persist(new Equipement("ASC-010", "Ascenseur Nation", TypeEquipement.ASCENSEUR, nation));
+		entityManager.persist(new Equipement("ASC-001", "Ascenseur quai A", TypeEquipement.ASCENSEUR, chatelet));
+		entityManager.flush();
+		entityManager.clear();
+
+		List<Equipement> equipements = equipementRepository.findAllAvecStation();
+
+		assertThat(equipements).extracting(Equipement::getReference).containsExactly("ASC-001", "PRT-020", "ASC-010");
+		assertThat(equipements).allSatisfy(equipement -> assertThat(Hibernate.isInitialized(equipement.getStation())).isTrue());
+	}
+
+	@Test
 	void requeteJpqlChargeLaStationAvecLEquipement() {
 		Station station = entityManager.persist(new Station("Châtelet"));
 		Equipement equipement = entityManager

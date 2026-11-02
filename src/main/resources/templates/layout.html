@@ -37,6 +37,7 @@
 <nav class="menu" th:fragment="menu" aria-label="Navigation principale" sec:authorize="isAuthenticated()">
     <ul>
         <li><a th:href="@{/stations}">Stations</a></li>
+        <li><a th:href="@{/incidents/nouveau}">Déclarer un incident</a></li>
         <li><a th:href="@{/historique}">Historique</a></li>
         <li sec:authorize="hasRole('RESPONSABLE')"><a th:href="@{/tableau-de-bord}">Tableau de bord</a></li>
     </ul>

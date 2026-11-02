@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Déclarer un incident', ~{::section})}">
+<head>
+    <title>Déclarer un incident</title>
+</head>
+<body>
+<section>
+    <h1>Déclarer un incident</h1>
+    <p>Signalez une panne sur un équipement. L'incident démarre sans prestataire, et l'équipement passe en panne.</p>
+
+    <form class="formulaire formulaire-large" th:action="@{/incidents}" th:object="${declaration}" method="post">
+        <label for="equipementId">Équipement</label>
+        <select id="equipementId" th:field="*{equipementId}" th:errorclass="champ-invalide" required>
+            <option value="">Choisir un équipement</option>
+            <option th:each="equipement : ${equipements}"
+                    th:value="${equipement.id}"
+                    th:text="${equipement.station.nom} + ' — ' + ${equipement.reference} + ' · ' + ${equipement.libelle}">
+                Station — Référence · Libellé
+            </option>
+        </select>
+        <p class="erreur-champ" th:if="${#fields.hasErrors('equipementId')}" th:errors="*{equipementId}">Erreur</p>
+
+        <label for="description">Description</label>
+        <textarea id="description" th:field="*{description}" th:errorclass="champ-invalide"
+                  rows="5" maxlength="1000" required></textarea>
+        <p class="erreur-champ" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">Erreur</p>
+
+        <button type="submit" class="bouton">Déclarer l'incident</button>
+    </form>
+</section>
+</body>
+</html>
