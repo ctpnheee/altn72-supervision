@@ -7,5 +7,14 @@ package fr.efrei.altn72.supervision.model.enums;
 public enum StatutIncident {
 	NON_AFFECTE,
 	AFFECTE,
-	RESOLU
+	RESOLU;
+
+	/** Libellé affiché. Le nom de la constante reste la valeur stockée. */
+	public String getLibelle() {
+		return switch (this) {
+			case NON_AFFECTE -> "Non affecté";
+			case AFFECTE -> "Affecté";
+			case RESOLU -> "Résolu";
+		};
+	}
 }

@@ -2,6 +2,7 @@ package fr.efrei.altn72.supervision.web;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -26,6 +27,17 @@ public class MvcExceptionHandler {
 	@ResponseStatus(HttpStatus.NOT_FOUND)
 	String ressourceIntrouvable() {
 		return "error/404";
+	}
+
+	/**
+	 * Refus d'un {@code @PreAuthorize} (RG11). L'exception part du service, pendant le traitement
+	 * de la page : sans ce gestionnaire, elle ne passerait pas par le filtre de sécurité et la
+	 * page 403 ne serait pas affichée.
+	 */
+	@ExceptionHandler(AccessDeniedException.class)
+	@ResponseStatus(HttpStatus.FORBIDDEN)
+	String accesRefuse() {
+		return "error/403";
 	}
 
 	/** Action refusée par une règle de gestion : retour à la page d'où elle a été demandée, avec le message. */
