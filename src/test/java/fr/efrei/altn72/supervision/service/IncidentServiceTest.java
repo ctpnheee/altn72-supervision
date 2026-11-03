@@ -45,6 +45,7 @@ import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
 import fr.efrei.altn72.supervision.service.IncidentService.DetailIncident;
+import fr.efrei.altn72.supervision.service.IncidentService.IncidentResume;
 import fr.efrei.altn72.supervision.service.IncidentService.PrestataireChoix;
 
 class IncidentServiceTest {
@@ -451,6 +452,21 @@ class IncidentServiceTest {
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_SERVICE);
 		verify(incidentRepository, never()).save(any());
 		verify(incidentRepository, never()).countByEquipementIdAndStatutNot(any(), any());
+	}
+
+	@Test
+	void lireExposeLaMemeDureeQueLaPage() {
+		Incident incident = incidentOuvertDepuis(Duration.ofHours(47));
+		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
+		when(evaluationRepository.findByIncidentId(4L)).thenReturn(Optional.empty());
+
+		IncidentResume resume = service.lire(4L);
+
+		assertThat(resume.dureeOuverture()).isEqualTo("47 h");
+		assertThat(resume.precisionDuree()).isEqualTo("Depuis l'ouverture");
+		assertThat(resume.niveau()).isEqualTo(NiveauAttention.VERT);
+		assertThat(resume.prestataireId()).isNull();
+		assertThat(resume.note()).isNull();
 	}
 
 	private Incident incidentOuvertDepuis(Duration duree) {

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,6 +23,11 @@ import fr.efrei.altn72.supervision.exception.TransitionInterditeException;
  */
 @RestControllerAdvice(annotations = RestController.class)
 public class ApiExceptionHandler {
+
+	@ExceptionHandler(AccessDeniedException.class)
+	ProblemDetail accesRefuse() {
+		return problemeDetail(HttpStatus.FORBIDDEN, "Accès refusé", "Vous n'avez pas le droit d'effectuer cette action.");
+	}
 
 	@ExceptionHandler(RessourceIntrouvableException.class)
 	ProblemDetail ressourceIntrouvable(RessourceIntrouvableException exception) {

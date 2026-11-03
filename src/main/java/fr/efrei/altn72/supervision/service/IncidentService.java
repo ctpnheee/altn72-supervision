@@ -4,6 +4,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -82,6 +85,17 @@ public class IncidentService {
 	public record PrestataireChoix(Long id, String nom) {
 	}
 
+	/**
+	 * Incident tel que l'API le renvoie. Les deux profils voient les mêmes champs :
+	 * le droit d'écrire est porté par {@code @PreAuthorize}, pas par le JSON.
+	 */
+	public record IncidentResume(Long id, String description, LocalDateTime dateOuverture, LocalDateTime dateResolution,
+			StatutIncident statut, String dureeOuverture, String precisionDuree, NiveauAttention niveau,
+			Long equipementId, String equipementReference, String equipementLibelle, String stationNom,
+			String declarantPrenom, Long prestataireId, String prestataireNom, Integer note,
+			String commentaireEvaluation, LocalDateTime dateEvaluation) {
+	}
+
 	/** Équipements proposés à la déclaration, station déjà chargée pour la vue. */
 	public List<Equipement> listerEquipements() {
 		return equipementRepository.findAllAvecStation();
@@ -118,6 +132,23 @@ public class IncidentService {
 		Evaluation evaluation = evaluationRepository.findByIncidentId(id).orElse(null);
 		boolean modifiable = autorisationsIncident.peutModifier(incident, login);
 		return versDetail(incident, evaluation, modifiable, consigne(login, modifiable), pilotage(incident, login));
+	}
+
+	/** Incidents du plus récent au plus ancien, pour {@code GET /api/incidents}. */
+	@Transactional(readOnly = true)
+	public List<IncidentResume> lister() {
+		List<Incident> incidents = incidentRepository.findAllDetails();
+		Map<Long, Evaluation> evaluations = evaluationsDes(incidents);
+		return incidents.stream()
+				.map(incident -> versResume(incident, evaluations.get(incident.getId())))
+				.toList();
+	}
+
+	/** Un incident pour {@code GET /api/incidents/{id}}. Même durée que la page, sans les drapeaux d'affichage. */
+	@Transactional(readOnly = true)
+	public IncidentResume lire(Long id) {
+		Incident incident = charger(id);
+		return versResume(incident, evaluationRepository.findByIncidentId(id).orElse(null));
 	}
 
 	/**
@@ -248,9 +279,8 @@ public class IncidentService {
 
 	private DetailIncident versDetail(Incident incident, Evaluation evaluation, boolean modifiable, String consigne,
 			Pilotage pilotage) {
-		LocalDateTime maintenant = LocalDateTime.ofInstant(clock.instant(), clock.getZone());
 		boolean resolu = incident.getStatut() == StatutIncident.RESOLU;
-		LocalDateTime fin = resolu && incident.getDateResolution() != null ? incident.getDateResolution() : maintenant;
+		LocalDateTime fin = finDeDuree(incident);
 		Prestataire prestataire = incident.getPrestataire();
 		Equipement equipement = incident.getEquipement();
 		return new DetailIncident(incident.getId(), incident.getDescription(), incident.getDateOuverture(),
@@ -269,6 +299,39 @@ public class IncidentService {
 
 	private record Pilotage(boolean autorise, String consigne, String libelleAffectation,
 			List<PrestataireChoix> prestataires) {
+	}
+
+	private IncidentResume versResume(Incident incident, Evaluation evaluation) {
+		boolean resolu = incident.getStatut() == StatutIncident.RESOLU;
+		Prestataire prestataire = incident.getPrestataire();
+		Equipement equipement = incident.getEquipement();
+		return new IncidentResume(incident.getId(), incident.getDescription(), incident.getDateOuverture(),
+				incident.getDateResolution(), incident.getStatut(),
+				formaterDuree(incident.getDateOuverture(), finDeDuree(incident)),
+				resolu ? "Entre l'ouverture et la résolution" : "Depuis l'ouverture",
+				resolu ? null : niveauAttentionCalculator.calculer(incident), equipement.getId(),
+				equipement.getReference(), equipement.getLibelle(), equipement.getStation().getNom(),
+				incident.getDeclarant().getPrenom(), prestataire == null ? null : prestataire.getId(),
+				prestataire == null ? null : prestataire.getNom(), evaluation == null ? null : evaluation.getNote(),
+				evaluation == null ? null : evaluation.getCommentaire(),
+				evaluation == null ? null : evaluation.getDate());
+	}
+
+	/** Incident ouvert : jusqu'à maintenant. Incident résolu : jusqu'à sa date de résolution. */
+	private LocalDateTime finDeDuree(Incident incident) {
+		if (incident.getStatut() == StatutIncident.RESOLU && incident.getDateResolution() != null) {
+			return incident.getDateResolution();
+		}
+		return LocalDateTime.ofInstant(clock.instant(), clock.getZone());
+	}
+
+	private Map<Long, Evaluation> evaluationsDes(List<Incident> incidents) {
+		List<Long> ids = incidents.stream().map(Incident::getId).filter(id -> id != null).toList();
+		if (ids.isEmpty()) {
+			return Map.of();
+		}
+		return evaluationRepository.findByIncidentIdIn(ids).stream()
+				.collect(Collectors.toMap(evaluation -> evaluation.getIncident().getId(), Function.identity()));
 	}
 
 	private static String formaterDuree(LocalDateTime debut, LocalDateTime fin) {
