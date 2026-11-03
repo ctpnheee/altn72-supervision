@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7) et la résolution (F8) sont disponibles ; F9 à F12 restent à développer
+- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7), la résolution (F8) et l'API (F12) sont disponibles ; F9 à F11 restent à développer
 
 ## ARCHITECTURE
 
@@ -126,6 +126,20 @@ travaille sur une information stable.
     la même page. Masquer le bouton ne suffit pas (RG11) : un POST direct d'un agent répond 403.
   - `PrestataireRepository` est reçu par le constructeur, avec les autres dépôts et le `Clock` : un test unitaire
     passe des simulacres et une horloge fixe.
+- API des incidents (F12) :
+  - `IncidentApiController` ne recalcule pas les règles. `PUT` appelle `affecter` et `PATCH` appelle `resoudre`,
+    les mêmes méthodes que les pages. Sans cela, la date, l'interdiction de réaffecter un incident résolu et le
+    retour en service de l'équipement existeraient deux fois et pourraient diverger.
+  - Le JSON est un `IncidentResume` : les deux profils reçoivent les mêmes champs. Le droit d'écrire reste
+    `@PreAuthorize("hasRole('RESPONSABLE')")` sur le service (RG11). Un agent qui envoie un `PUT` reçoit 403.
+  - Sans session, `/api/**` répond 401. Les pages continuent de rediriger vers `/login`. Les deux comportements sont
+    deux correspondances dans `SecurityConfig` : avec une seule, Spring Security l'appliquerait à toutes les requêtes.
+  - Les erreurs métier passent par `ApiExceptionHandler` en `ProblemDetail` : 404 ressource introuvable, 409
+    transition interdite, 400 corps invalide, avec le champ en cause. Aucune trace technique.
+  - Le jeton CSRF des formulaires reste exigé sur `PUT` et `PATCH`. La session est un cookie : sans ce jeton, un
+    autre site pourrait affecter un prestataire pendant que l'utilisateur est connecté.
+  - Swagger (springdoc) ne décrit que le package `api`. Les contrôleurs de pages renvoient un nom de vue, pas du JSON.
+    La page est `/swagger-ui.html`, après connexion.
 
 ## LOT ALPHA
 

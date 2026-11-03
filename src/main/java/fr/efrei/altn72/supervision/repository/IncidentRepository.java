@@ -25,6 +25,17 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 	/** Fiche d'un équipement : incidents du plus récent au plus ancien (RG7). */
 	List<Incident> findByEquipementIdOrderByDateOuvertureDesc(Long equipementId);
 
+	/** Liste de l'API : du plus récent au plus ancien, relations déjà chargées (`open-in-view` est désactivé). */
+	@Query("""
+			select i from Incident i
+			join fetch i.equipement e
+			join fetch e.station
+			join fetch i.declarant
+			left join fetch i.prestataire
+			order by i.dateOuverture desc
+			""")
+	List<Incident> findAllDetails();
+
 	/** Détail d'un incident avec tout ce que la vue affiche ; le prestataire est facultatif (left join). */
 	@Query("""
 			select i from Incident i
