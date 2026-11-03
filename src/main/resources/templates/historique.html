@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Historique des incidents', ~{::section})}">
+<head>
+    <title>Historique des incidents</title>
+</head>
+<body>
+<section>
+
+    <h1>Historique des incidents résolus</h1>
+
+    <p>
+        Retrouvez les incidents terminés, classés
+        du plus récent au plus ancien.
+    </p>
+
+    <p th:if="${historique.isEmpty()}">
+        Aucun incident résolu pour le moment.
+    </p>
+
+    <table th:unless="${historique.isEmpty()}">
+        <thead>
+        <tr>
+            <th>Date de résolution</th>
+            <th>Équipement</th>
+            <th>Station</th>
+            <th>Prestataire</th>
+            <th>Durée</th>
+            <th>Note</th>
+            <th>Détail</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="incident : ${historique.content}">
+
+            <td th:text="${#temporals.format(incident.dateResolution, 'dd/MM/yyyy HH:mm')}">
+                30/10/2026 12:00
+            </td>
+
+            <td>
+                <strong th:text="${incident.equipementReference}">
+                    ASC-001
+                </strong>
+
+                <div th:text="${incident.equipementLibelle}">
+                    Ascenseur
+                </div>
+            </td>
+
+            <td th:text="${incident.stationNom}">
+                Châtelet
+            </td>
+
+            <td>
+                <span th:if="${incident.prestataireNom != null}"
+                      th:text="${incident.prestataireNom}">
+                    Prestataire
+                </span>
+
+                <span th:unless="${incident.prestataireNom != null}">
+                    Non affecté
+                </span>
+            </td>
+
+            <td th:text="${incident.dureeResolution}">
+                48 h
+            </td>
+
+            <td>
+                <span th:if="${incident.note != null}"
+                      th:text="${incident.note + ' / 5'}">
+                    5 / 5
+                </span>
+
+                <span th:unless="${incident.note != null}">
+                    Non évalué
+                </span>
+            </td>
+
+            <td>
+                <a th:href="@{/incidents/{id}(id=${incident.id})}">
+                    Voir l'incident
+                </a>
+            </td>
+
+        </tr>
+        </tbody>
+    </table>
+
+    <nav th:if="${historique.totalPages > 1}"
+         aria-label="Pagination de l'historique">
+
+        <p th:text="${'Page ' + (historique.number + 1) + ' sur ' + historique.totalPages}">
+            Page 1 sur 2
+        </p>
+
+        <a th:if="${historique.hasPrevious()}"
+           th:href="@{/historique(page=${historique.number - 1})}">
+            Page précédente
+        </a>
+
+        <a th:if="${historique.hasNext()}"
+           th:href="@{/historique(page=${historique.number + 1})}">
+            Page suivante
+        </a>
+
+    </nav>
+
+</section>
+</body>
+</html>

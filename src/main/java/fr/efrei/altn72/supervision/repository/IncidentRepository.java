@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 import fr.efrei.altn72.supervision.model.Incident;
 import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
 	List<Incident> findByStatut(StatutIncident statut);
@@ -46,4 +49,31 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 			where i.id = :id
 			""")
 	Optional<Incident> findDetailParId(@Param("id") Long id);
+
+
+	/**
+	 * Historique des incidents résolus (RG6, RG7).
+	 *
+	 * Tri par date de résolution décroissante.
+	 * Les relations nécessaires à la vue sont chargées
+	 * pour fonctionner avec open-in-view désactivé.
+	 */
+	@Query(
+			value = """
+        SELECT i FROM Incident i
+        JOIN FETCH i.equipement e
+        JOIN FETCH e.station
+        LEFT JOIN FETCH i.prestataire
+        WHERE i.statut = :statut
+        ORDER BY i.dateResolution DESC, i.id DESC
+        """,
+			countQuery = """
+        SELECT COUNT(i) FROM Incident i
+        WHERE i.statut = :statut
+        """
+	)
+	Page<Incident> findHistoriqueResolu(
+			@Param("statut") StatutIncident statut,
+			Pageable pageable);
+
 }
