@@ -200,7 +200,7 @@ class IncidentControllerTest {
 				.andExpect(view().name("incident/detail"))
 				.andExpect(content().string(containsString("Choisissez un prestataire.")));
 		verify(incidentService).controlerDroitPilotage();
-		verify(incidentService, never()).affecter(any(), any());
+		verify(incidentService, never()).affecter(any(), any(), any());
 	}
 
 	@Test
@@ -211,7 +211,7 @@ class IncidentControllerTest {
 						.param("prestataireId", ""))
 				.andExpect(status().isForbidden())
 				.andExpect(content().string(containsString("Accès refusé")));
-		verify(incidentService, never()).affecter(any(), any());
+		verify(incidentService, never()).affecter(any(), any(), any());
 	}
 
 	@Test
@@ -221,7 +221,7 @@ class IncidentControllerTest {
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/12"))
 				.andExpect(flash().attribute("succes", "Prestataire affecté."));
-		verify(incidentService).affecter(12L, 5L);
+		verify(incidentService).affecter(12L, 5L, "alice");
 	}
 
 	@Test
@@ -230,12 +230,12 @@ class IncidentControllerTest {
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/12"))
 				.andExpect(flash().attribute("succes", "Incident résolu."));
-		verify(incidentService).resoudre(12L);
+		verify(incidentService).resoudre(12L, "alice");
 	}
 
 	@Test
 	void uneResolutionEstRefuseeAUnAgent() throws Exception {
-		doThrow(new AuthorizationDeniedException("refus")).when(incidentService).resoudre(12L);
+		doThrow(new AuthorizationDeniedException("refus")).when(incidentService).resoudre(12L, "alice");
 
 		mockMvc.perform(post("/incidents/12/resolution").with(connecte(Profil.AGENT)).with(csrf()))
 				.andExpect(status().isForbidden())
@@ -254,6 +254,6 @@ class IncidentControllerTest {
 				modifiable ? "Vous pouvez corriger la description." : null, pilotage,
 				pilotage ? null : "Seul le responsable peut affecter un prestataire ou résoudre l'incident.",
 				pilotage ? "Affecter le prestataire" : null,
-				pilotage ? List.of(new PrestataireChoix(5L, "Otis")) : List.of());
+				pilotage ? List.of(new PrestataireChoix(5L, "Otis")) : List.of(), List.of());
 	}
 }

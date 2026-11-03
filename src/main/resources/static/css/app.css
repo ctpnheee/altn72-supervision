@@ -397,3 +397,17 @@ main > section {
 		grid-template-columns: 1fr;
 	}
 }
+
+.journal {
+	margin: 0;
+	padding-left: 1.25rem;
+}
+
+.journal li {
+	margin: 0.35rem 0;
+}
+
+.journal time {
+	margin-right: 0.5rem;
+	color: var(--couleur-texte-discret);
+}

@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7), la résolution (F8) et l'API (F12) sont disponibles ; F9 à F11 restent à développer
+- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7), la résolution (F8), l'API (F12) et le journal métier d'un incident sont disponibles ; F9 à F11 restent à développer
 
 ## ARCHITECTURE
 
@@ -140,6 +140,15 @@ travaille sur une information stable.
     autre site pourrait affecter un prestataire pendant que l'utilisateur est connecté.
   - Swagger (springdoc) ne décrit que le package `api`. Les contrôleurs de pages renvoient un nom de vue, pas du JSON.
     La page est `/swagger-ui.html`, après connexion.
+- Journal métier d'un incident :
+  - `IncidentService` publie `EvenementIncidentDemande` après un enregistrement réussi. `JournalIncident` écoute et
+    écrit la ligne. Le service ne connaît pas la table : un autre écouteur peut s'ajouter sans modifier `affecter`.
+  - L'écoute est synchrone et `@Transactional`, donc elle rejoint la transaction de `affecter` ou `resoudre`.
+    Après le commit, un échec du journal laisserait un incident sans sa ligne.
+  - La date vient du `Clock` de l'écouteur. Le formulaire n'a pas de champ « quand ».
+  - Le contrôleur passe le login. Le service ne lit pas le `SecurityContext` : un test unitaire publie l'événement
+    sans contexte de sécurité. Le prénom affiché (« Alice ») est résolu dans l'écouteur.
+  - La page reçoit `List<EvenementLigne>` déjà ordonnée (date, puis identifiant). La vue n'ordonne pas les dates.
 
 ## LOT ALPHA
 

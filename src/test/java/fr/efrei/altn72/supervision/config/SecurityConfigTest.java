@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import fr.efrei.altn72.supervision.model.Utilisateur;
 import fr.efrei.altn72.supervision.model.enums.Profil;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
+import fr.efrei.altn72.supervision.repository.EvenementIncidentRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
 
@@ -47,6 +48,9 @@ class SecurityConfigTest {
 	private EvaluationRepository evaluationRepository;
 
 	@Autowired
+	private EvenementIncidentRepository evenementRepository;
+
+	@Autowired
 	private PasswordEncoder passwordEncoder;
 
 	@BeforeEach
@@ -54,6 +58,7 @@ class SecurityConfigTest {
 		// Un incident référence son déclarant : vider les utilisateurs seuls viole la clé étrangère
 		// quand un autre test a déjà enregistré des incidents dans cette base.
 		evaluationRepository.deleteAll();
+		evenementRepository.deleteAll();
 		incidentRepository.deleteAll();
 		utilisateurRepository.deleteAll();
 		utilisateurRepository.save(new Utilisateur("alice", passwordEncoder.encode(MOT_DE_PASSE), "Alice", Profil.RESPONSABLE));
