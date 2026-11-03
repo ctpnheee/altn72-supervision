@@ -254,6 +254,8 @@ class IncidentControllerTest {
 				modifiable ? "Vous pouvez corriger la description." : null, pilotage,
 				pilotage ? null : "Seul le responsable peut affecter un prestataire ou résoudre l'incident.",
 				pilotage ? "Affecter le prestataire" : null,
-				pilotage ? List.of(new PrestataireChoix(5L, "Otis")) : List.of(), List.of());
+				pilotage ? List.of(new PrestataireChoix(5L, "Otis")) : List.of(), List.of(),
+				prestataire == null ? null : 5L,
+				prestataire == null ? null : 4.5);
 	}
 }

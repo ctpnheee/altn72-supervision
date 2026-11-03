@@ -1,0 +1,75 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Prestataires', ~{::section})}">
+<head>
+    <title>Prestataires</title>
+</head>
+<body>
+<section>
+
+    <h1>Prestataires</h1>
+
+    <p>
+        Consultez les coordonnées, les interventions
+        et la note moyenne des prestataires.
+    </p>
+
+    <p th:if="${#lists.isEmpty(prestataires)}">
+        Aucun prestataire disponible.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(prestataires)}">
+        <thead>
+        <tr>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Téléphone</th>
+            <th>Interventions</th>
+            <th>Note moyenne</th>
+            <th>Détail</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="p : ${prestataires}">
+
+            <td th:text="${p.nom}">Otis</td>
+
+            <td th:text="${p.email}">
+                otis@example.org
+            </td>
+
+            <td th:text="${p.telephone}">
+                0102030405
+            </td>
+
+            <td th:text="${p.nombreInterventions}">
+                3
+            </td>
+
+            <td>
+                <span th:if="${p.noteMoyenne != null}"
+                      th:text="${#numbers.formatDecimal(p.noteMoyenne, 1, 2) + ' / 5'}">
+                    4,50 / 5
+                </span>
+
+                <span th:unless="${p.noteMoyenne != null}">
+                    Pas encore évalué
+                </span>
+            </td>
+
+            <td>
+                <a th:href="@{/prestataires/{id}(id=${p.id})}">
+                    Voir la fiche
+                </a>
+            </td>
+
+        </tr>
+        </tbody>
+    </table>
+
+</section>
+</body>
+</html>

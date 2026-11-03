@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Fiche prestataire', ~{::section})}">
+<head>
+    <title>Fiche prestataire</title>
+</head>
+<body>
+<section>
+
+    <p>
+        <a th:href="@{/prestataires}">
+            Retour aux prestataires
+        </a>
+    </p>
+
+    <h1 th:text="${prestataire.nom}">
+        Otis Maintenance
+    </h1>
+
+    <h2>Informations du prestataire</h2>
+
+    <dl class="fiche">
+        <dt>Email</dt>
+        <dd th:text="${prestataire.email}">
+            otis@example.org
+        </dd>
+
+        <dt>Téléphone</dt>
+        <dd th:text="${prestataire.telephone}">
+            0102030405
+        </dd>
+
+        <dt>Nombre d'interventions</dt>
+        <dd th:text="${prestataire.nombreInterventions}">
+            3
+        </dd>
+
+        <dt>Note moyenne</dt>
+        <dd>
+            <span th:if="${prestataire.noteMoyenne != null}"
+                  th:text="${#numbers.formatDecimal(prestataire.noteMoyenne, 1, 2) + ' / 5'}">
+                4,50 / 5
+            </span>
+
+            <span th:unless="${prestataire.noteMoyenne != null}">
+                Pas encore évalué
+            </span>
+        </dd>
+    </dl>
+
+    <h2>Interventions</h2>
+
+    <p th:if="${#lists.isEmpty(prestataire.interventions)}">
+        Aucune intervention enregistrée.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(prestataire.interventions)}">
+        <thead>
+        <tr>
+            <th>Ouverture</th>
+            <th>Équipement</th>
+            <th>Station</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Détail</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="intervention : ${prestataire.interventions}">
+
+            <td th:text="${#temporals.format(
+                    intervention.dateOuverture,
+                    'dd/MM/yyyy HH:mm')}">
+                03/11/2026 14:00
+            </td>
+
+            <td>
+                <strong th:text="${intervention.referenceEquipement}">
+                    ASC-001
+                </strong>
+
+                <span th:text="${intervention.libelleEquipement}">
+                    Ascenseur
+                </span>
+            </td>
+
+            <td th:text="${intervention.nomStation}">
+                Châtelet
+            </td>
+
+            <td th:text="${intervention.description}">
+                Porte bloquée
+            </td>
+
+            <td th:text="${intervention.statut}">
+                RESOLU
+            </td>
+
+            <td>
+                <a th:href="@{/incidents/{id}(id=${intervention.id})}">
+                    Voir l'incident
+                </a>
+            </td>
+
+        </tr>
+        </tbody>
+    </table>
+
+</section>
+</body>
+</html>

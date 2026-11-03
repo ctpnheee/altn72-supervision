@@ -76,4 +76,22 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 			@Param("statut") StatutIncident statut,
 			Pageable pageable);
 
+
+	/**
+	 * Interventions d'un prestataire, de la plus récente
+	 * à la plus ancienne.
+	 *
+	 * Charge aussi l'équipement et sa station.
+	 */
+	@Query("""
+    SELECT i FROM Incident i
+    JOIN FETCH i.equipement e
+    JOIN FETCH e.station
+    WHERE i.prestataire.id = :prestataireId
+    ORDER BY i.dateOuverture DESC, i.id DESC
+    """)
+	List<Incident> findInterventionsParPrestataire(
+			@Param("prestataireId") Long prestataireId);
+
+
 }

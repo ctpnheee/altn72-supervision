@@ -63,8 +63,27 @@
     <h2>Prestataire</h2>
     <p th:if="${detail.prestataireNom == null}">Aucun prestataire n'est affecté.</p>
     <dl th:if="${detail.prestataireNom != null}" class="fiche">
+
         <dt>Nom</dt>
-        <dd th:text="${detail.prestataireNom}">Otis</dd>
+        <dd>
+            <a th:href="@{/prestataires/{id}(id=${detail.prestataireId})}"
+               th:text="${detail.prestataireNom}">
+                Otis
+            </a>
+        </dd>
+
+        <dt>Note moyenne du prestataire</dt>
+        <dd>
+    <span th:if="${detail.prestataireNoteMoyenne != null}"
+          th:text="${#numbers.formatDecimal(detail.prestataireNoteMoyenne, 1, 2) + ' / 5'}">
+        4,50 / 5
+    </span>
+
+            <span th:unless="${detail.prestataireNoteMoyenne != null}">
+        Pas encore évalué
+    </span>
+        </dd>
+
         <dt>E-mail</dt>
         <dd th:text="${detail.prestataireEmail}">otis@example.org</dd>
         <dt>Téléphone</dt>
