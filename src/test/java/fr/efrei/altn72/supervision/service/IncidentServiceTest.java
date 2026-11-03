@@ -21,6 +21,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,7 @@ import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.model.enums.TypeEquipement;
 import fr.efrei.altn72.supervision.repository.EquipementRepository;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
+import fr.efrei.altn72.supervision.repository.EvenementIncidentRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
@@ -57,6 +60,8 @@ class IncidentServiceTest {
 	private UtilisateurRepository utilisateurRepository;
 	private EvaluationRepository evaluationRepository;
 	private PrestataireRepository prestataireRepository;
+	private EvenementIncidentRepository evenementRepository;
+	private ApplicationEventPublisher evenements;
 	private AutorisationsIncident autorisationsIncident;
 	private IncidentService service;
 
@@ -70,10 +75,14 @@ class IncidentServiceTest {
 		utilisateurRepository = mock(UtilisateurRepository.class);
 		evaluationRepository = mock(EvaluationRepository.class);
 		prestataireRepository = mock(PrestataireRepository.class);
+		evenementRepository = mock(EvenementIncidentRepository.class);
+		evenements = mock(ApplicationEventPublisher.class);
 		autorisationsIncident = mock(AutorisationsIncident.class);
 		Clock clock = Clock.fixed(INSTANT, ZoneOffset.UTC);
 		service = new IncidentService(clock, incidentRepository, equipementRepository, utilisateurRepository,
-				evaluationRepository, prestataireRepository, new NiveauAttentionCalculator(clock), autorisationsIncident);
+				evaluationRepository, prestataireRepository, evenementRepository, new NiveauAttentionCalculator(clock),
+				autorisationsIncident, evenements);
+		when(evenementRepository.findByIncidentIdOrderByDateAscIdAsc(any())).thenReturn(List.of());
 
 		equipement = new Equipement("ASC-001", "Ascenseur quai A", TypeEquipement.ASCENSEUR, new Station("Châtelet"));
 		declarant = new Utilisateur("alice", "hash", "Alice", Profil.AGENT);
@@ -275,8 +284,8 @@ class IncidentServiceTest {
 
 	@Test
 	void affecterEtResoudreSontTransactionnelsEtReservesAuResponsable() throws NoSuchMethodException {
-		Method affecter = IncidentService.class.getMethod("affecter", Long.class, Long.class);
-		Method resoudre = IncidentService.class.getMethod("resoudre", Long.class);
+		Method affecter = IncidentService.class.getMethod("affecter", Long.class, Long.class, String.class);
+		Method resoudre = IncidentService.class.getMethod("resoudre", Long.class, String.class);
 		Method controle = IncidentService.class.getMethod("controlerDroitPilotage");
 
 		assertThat(affecter.isAnnotationPresent(Transactional.class)).isTrue();
@@ -293,11 +302,15 @@ class IncidentServiceTest {
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 		when(prestataireRepository.findById(5L)).thenReturn(Optional.of(otis));
 
-		Incident enregistre = service.affecter(4L, 5L);
+		Incident enregistre = service.affecter(4L, 5L, "alice");
 
 		assertThat(enregistre.getStatut()).isEqualTo(StatutIncident.AFFECTE);
 		assertThat(enregistre.getPrestataire()).isSameAs(otis);
 		verify(incidentRepository).save(incident);
+		ArgumentCaptor<EvenementIncidentDemande> demande = ArgumentCaptor.forClass(EvenementIncidentDemande.class);
+		verify(evenements).publishEvent(demande.capture());
+		assertThat(demande.getValue().login()).isEqualTo("alice");
+		assertThat(demande.getValue().action()).isEqualTo(TextesJournal.affectation("Otis"));
 	}
 
 	@Test
@@ -309,7 +322,7 @@ class IncidentServiceTest {
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 		when(prestataireRepository.findById(6L)).thenReturn(Optional.of(schindler));
 
-		service.affecter(4L, 6L);
+		service.affecter(4L, 6L, "alice");
 
 		assertThat(incident.getStatut()).isEqualTo(StatutIncident.AFFECTE);
 		assertThat(incident.getPrestataire()).isSameAs(schindler);
@@ -324,11 +337,12 @@ class IncidentServiceTest {
 		incident.setPrestataire(otis);
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 
-		assertThatThrownBy(() -> service.affecter(4L, 6L))
+		assertThatThrownBy(() -> service.affecter(4L, 6L, "alice"))
 				.isInstanceOf(TransitionInterditeException.class)
 				.hasMessage(IncidentService.REAFFECTATION_REFUSEE);
 		verify(incidentRepository, never()).save(any());
 		verify(prestataireRepository, never()).findById(any());
+		verify(evenements, never()).publishEvent(any());
 		assertThat(incident.getPrestataire()).isSameAs(otis);
 	}
 
@@ -338,7 +352,7 @@ class IncidentServiceTest {
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 		when(prestataireRepository.findById(99L)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> service.affecter(4L, 99L))
+		assertThatThrownBy(() -> service.affecter(4L, 99L, "alice"))
 				.isInstanceOf(RessourceIntrouvableException.class)
 				.hasMessage("Prestataire 99 introuvable.");
 		verify(incidentRepository, never()).save(any());
@@ -349,7 +363,7 @@ class IncidentServiceTest {
 	void unIncidentInconnuNEstPasAffecte() {
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> service.affecter(4L, 5L))
+		assertThatThrownBy(() -> service.affecter(4L, 5L, "alice"))
 				.isInstanceOf(RessourceIntrouvableException.class)
 				.hasMessage("Incident 4 introuvable.");
 		verify(prestataireRepository, never()).findById(any());
@@ -366,7 +380,7 @@ class IncidentServiceTest {
 					return 1L;
 				});
 
-		Incident enregistre = service.resoudre(4L);
+		Incident enregistre = service.resoudre(4L, "alice");
 
 		assertThat(enregistre.getStatut()).isEqualTo(StatutIncident.RESOLU);
 		assertThat(enregistre.getDateResolution()).isEqualTo(LocalDateTime.ofInstant(INSTANT, ZoneOffset.UTC));
@@ -383,7 +397,7 @@ class IncidentServiceTest {
 		when(incidentRepository.countByEquipementIdAndStatutNot(nullable(Long.class), eq(StatutIncident.RESOLU)))
 				.thenReturn(1L);
 
-		service.resoudre(4L);
+		service.resoudre(4L, "alice");
 
 		assertThat(incident.getDateResolution()).isEqualTo(ouverture);
 		assertThat(incident.getStatut()).isEqualTo(StatutIncident.RESOLU);
@@ -396,7 +410,7 @@ class IncidentServiceTest {
 		equipement.setEtat(EtatEquipement.EN_PANNE);
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 
-		assertThatThrownBy(() -> service.resoudre(4L))
+		assertThatThrownBy(() -> service.resoudre(4L, "alice"))
 				.isInstanceOf(TransitionInterditeException.class)
 				.hasMessage(IncidentService.RESOLUTION_AVANT_OUVERTURE);
 		assertThat(incident.getStatut()).isEqualTo(StatutIncident.NON_AFFECTE);
@@ -415,7 +429,7 @@ class IncidentServiceTest {
 		when(incidentRepository.countByEquipementIdAndStatutNot(nullable(Long.class), eq(StatutIncident.RESOLU)))
 				.thenReturn(1L);
 
-		service.resoudre(4L);
+		service.resoudre(4L, "alice");
 
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_SERVICE);
 		verify(equipementRepository).save(equipement);
@@ -429,7 +443,7 @@ class IncidentServiceTest {
 		when(incidentRepository.countByEquipementIdAndStatutNot(nullable(Long.class), eq(StatutIncident.RESOLU)))
 				.thenReturn(2L);
 
-		service.resoudre(4L);
+		service.resoudre(4L, "alice");
 
 		assertThat(incident.getStatut()).isEqualTo(StatutIncident.RESOLU);
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_PANNE);
@@ -445,7 +459,7 @@ class IncidentServiceTest {
 		equipement.setEtat(EtatEquipement.EN_SERVICE);
 		when(incidentRepository.findDetailParId(4L)).thenReturn(Optional.of(incident));
 
-		assertThatThrownBy(() -> service.resoudre(4L))
+		assertThatThrownBy(() -> service.resoudre(4L, "alice"))
 				.isInstanceOf(TransitionInterditeException.class)
 				.hasMessage(IncidentService.DEJA_RESOLU);
 		assertThat(incident.getDateResolution()).isEqualTo(resolution);

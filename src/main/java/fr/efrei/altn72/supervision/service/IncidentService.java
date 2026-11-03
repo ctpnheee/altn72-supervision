@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import fr.efrei.altn72.supervision.model.enums.Profil;
 import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.repository.EquipementRepository;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
+import fr.efrei.altn72.supervision.repository.EvenementIncidentRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
@@ -51,21 +53,26 @@ public class IncidentService {
 	private final UtilisateurRepository utilisateurRepository;
 	private final EvaluationRepository evaluationRepository;
 	private final PrestataireRepository prestataireRepository;
+	private final EvenementIncidentRepository evenementRepository;
 	private final NiveauAttentionCalculator niveauAttentionCalculator;
 	private final AutorisationsIncident autorisationsIncident;
+	private final ApplicationEventPublisher evenements;
 
 	public IncidentService(Clock clock, IncidentRepository incidentRepository, EquipementRepository equipementRepository,
 			UtilisateurRepository utilisateurRepository, EvaluationRepository evaluationRepository,
-			PrestataireRepository prestataireRepository, NiveauAttentionCalculator niveauAttentionCalculator,
-			AutorisationsIncident autorisationsIncident) {
+			PrestataireRepository prestataireRepository, EvenementIncidentRepository evenementRepository,
+			NiveauAttentionCalculator niveauAttentionCalculator, AutorisationsIncident autorisationsIncident,
+			ApplicationEventPublisher evenements) {
 		this.clock = clock;
 		this.incidentRepository = incidentRepository;
 		this.equipementRepository = equipementRepository;
 		this.utilisateurRepository = utilisateurRepository;
 		this.evaluationRepository = evaluationRepository;
 		this.prestataireRepository = prestataireRepository;
+		this.evenementRepository = evenementRepository;
 		this.niveauAttentionCalculator = niveauAttentionCalculator;
 		this.autorisationsIncident = autorisationsIncident;
+		this.evenements = evenements;
 	}
 
 	/**
@@ -78,7 +85,11 @@ public class IncidentService {
 			String declarantPrenom, String prestataireNom, String prestataireEmail, String prestataireTelephone,
 			Integer note, String commentaireEvaluation, LocalDateTime dateEvaluation, boolean descriptionModifiable,
 			String consigneModification, boolean peutAffecterOuResoudre, String consignePilotage,
-			String libelleAffectation, List<PrestataireChoix> prestataires) {
+			String libelleAffectation, List<PrestataireChoix> prestataires, List<EvenementLigne> evenements) {
+	}
+
+	/** Une ligne du journal déjà prête pour la page : la vue n'ordonne pas les dates. */
+	public record EvenementLigne(LocalDateTime date, String auteur, String action) {
 	}
 
 	/** Prestataire proposé dans la liste d'affectation. La vue n'a pas besoin de l'entité. */
@@ -117,7 +128,9 @@ public class IncidentService {
 		Incident incident = new Incident(description.trim(), ouverture, equipement, declarant);
 		equipement.setEtat(EtatEquipement.EN_PANNE);
 		equipementRepository.save(equipement);
-		return incidentRepository.save(incident);
+		Incident enregistre = incidentRepository.save(incident);
+		publier(enregistre.getId(), loginDeclarant, TextesJournal.DECLARATION);
+		return enregistre;
 	}
 
 	/**
@@ -131,7 +144,11 @@ public class IncidentService {
 		Incident incident = charger(id);
 		Evaluation evaluation = evaluationRepository.findByIncidentId(id).orElse(null);
 		boolean modifiable = autorisationsIncident.peutModifier(incident, login);
-		return versDetail(incident, evaluation, modifiable, consigne(login, modifiable), pilotage(incident, login));
+		List<EvenementLigne> evenements = evenementRepository.findByIncidentIdOrderByDateAscIdAsc(id).stream()
+				.map(evenement -> new EvenementLigne(evenement.getDate(), evenement.getAuteur(), evenement.getAction()))
+				.toList();
+		return versDetail(incident, evaluation, modifiable, consigne(login, modifiable), pilotage(incident, login),
+				evenements);
 	}
 
 	/** Incidents du plus récent au plus ancien, pour {@code GET /api/incidents}. */
@@ -183,16 +200,21 @@ public class IncidentService {
 	 */
 	@Transactional
 	@PreAuthorize("hasRole('RESPONSABLE')")
-	public Incident affecter(Long incidentId, Long prestataireId) {
+	public Incident affecter(Long incidentId, Long prestataireId, String login) {
 		Incident incident = charger(incidentId);
 		if (incident.getStatut() == StatutIncident.RESOLU) {
 			throw new TransitionInterditeException(REAFFECTATION_REFUSEE);
 		}
+		String ancienNom = incident.getPrestataire() == null ? null : incident.getPrestataire().getNom();
 		Prestataire prestataire = prestataireRepository.findById(prestataireId)
 				.orElseThrow(() -> new RessourceIntrouvableException("Prestataire " + prestataireId + " introuvable."));
 		incident.setPrestataire(prestataire);
 		incident.setStatut(StatutIncident.AFFECTE);
-		return incidentRepository.save(incident);
+		Incident enregistre = incidentRepository.save(incident);
+		String action = ancienNom == null ? TextesJournal.affectation(prestataire.getNom())
+				: TextesJournal.reaffectation(ancienNom, prestataire.getNom());
+		publier(enregistre.getId(), login, action);
+		return enregistre;
 	}
 
 	/**
@@ -211,7 +233,7 @@ public class IncidentService {
 	 */
 	@Transactional
 	@PreAuthorize("hasRole('RESPONSABLE')")
-	public Incident resoudre(Long incidentId) {
+	public Incident resoudre(Long incidentId, String login) {
 		Incident incident = charger(incidentId);
 		if (incident.getStatut() == StatutIncident.RESOLU) {
 			throw new TransitionInterditeException(DEJA_RESOLU);
@@ -229,7 +251,13 @@ public class IncidentService {
 		}
 		incident.setStatut(StatutIncident.RESOLU);
 		incident.setDateResolution(resolution);
-		return incidentRepository.save(incident);
+		Incident enregistre = incidentRepository.save(incident);
+		publier(enregistre.getId(), login, TextesJournal.RESOLUTION);
+		return enregistre;
+	}
+
+	private void publier(Long incidentId, String login, String action) {
+		evenements.publishEvent(new EvenementIncidentDemande(incidentId, login, action));
 	}
 
 	private Incident incidentAutorise(Long id, String login) {
@@ -278,7 +306,7 @@ public class IncidentService {
 	}
 
 	private DetailIncident versDetail(Incident incident, Evaluation evaluation, boolean modifiable, String consigne,
-			Pilotage pilotage) {
+			Pilotage pilotage, List<EvenementLigne> evenements) {
 		boolean resolu = incident.getStatut() == StatutIncident.RESOLU;
 		LocalDateTime fin = finDeDuree(incident);
 		Prestataire prestataire = incident.getPrestataire();
@@ -294,7 +322,7 @@ public class IncidentService {
 				evaluation == null ? null : evaluation.getNote(),
 				evaluation == null ? null : evaluation.getCommentaire(),
 				evaluation == null ? null : evaluation.getDate(), modifiable, consigne, pilotage.autorise(),
-				pilotage.consigne(), pilotage.libelleAffectation(), pilotage.prestataires());
+				pilotage.consigne(), pilotage.libelleAffectation(), pilotage.prestataires(), evenements);
 	}
 
 	private record Pilotage(boolean autorise, String consigne, String libelleAffectation,

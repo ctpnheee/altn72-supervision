@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import fr.efrei.altn72.supervision.model.Equipement;
 import fr.efrei.altn72.supervision.model.Evaluation;
+import fr.efrei.altn72.supervision.model.EvenementIncident;
 import fr.efrei.altn72.supervision.model.Incident;
 import fr.efrei.altn72.supervision.model.Prestataire;
 import fr.efrei.altn72.supervision.model.Station;
@@ -24,10 +25,12 @@ import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.model.enums.TypeEquipement;
 import fr.efrei.altn72.supervision.repository.EquipementRepository;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
+import fr.efrei.altn72.supervision.repository.EvenementIncidentRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.StationRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
+import fr.efrei.altn72.supervision.service.TextesJournal;
 
 /**
  * Charge un jeu de données daté par rapport à l'horloge, pour que chaque couleur
@@ -50,6 +53,7 @@ public class DemoDataLoader implements ApplicationRunner {
 	private final IncidentRepository incidentRepository;
 	private final PrestataireRepository prestataireRepository;
 	private final EvaluationRepository evaluationRepository;
+	private final EvenementIncidentRepository evenementRepository;
 	private final UtilisateurRepository utilisateurRepository;
 
 	@Value("${app.demo.enabled:true}")
@@ -61,7 +65,7 @@ public class DemoDataLoader implements ApplicationRunner {
 	public DemoDataLoader(Clock clock, PasswordEncoder passwordEncoder, StationRepository stationRepository,
 			EquipementRepository equipementRepository, IncidentRepository incidentRepository,
 			PrestataireRepository prestataireRepository, EvaluationRepository evaluationRepository,
-			UtilisateurRepository utilisateurRepository) {
+			EvenementIncidentRepository evenementRepository, UtilisateurRepository utilisateurRepository) {
 		this.clock = clock;
 		this.passwordEncoder = passwordEncoder;
 		this.stationRepository = stationRepository;
@@ -69,6 +73,7 @@ public class DemoDataLoader implements ApplicationRunner {
 		this.incidentRepository = incidentRepository;
 		this.prestataireRepository = prestataireRepository;
 		this.evaluationRepository = evaluationRepository;
+		this.evenementRepository = evenementRepository;
 		this.utilisateurRepository = utilisateurRepository;
 	}
 
@@ -100,6 +105,7 @@ public class DemoDataLoader implements ApplicationRunner {
 
 	private void vider() {
 		evaluationRepository.deleteAll();
+		evenementRepository.deleteAll();
 		incidentRepository.deleteAll();
 		equipementRepository.deleteAll();
 		stationRepository.deleteAll();
@@ -166,13 +172,17 @@ public class DemoDataLoader implements ApplicationRunner {
 		Incident incident = incidentRepository
 				.save(new Incident(description, ilYa(heures), equipement, declarant));
 		equipement.setEtat(EtatEquipement.EN_PANNE);
+		noter(incident, declarant, incident.getDateOuverture(), TextesJournal.DECLARATION);
 		return incident;
 	}
 
 	private Incident affecter(Incident incident, Prestataire prestataire) {
 		incident.setPrestataire(prestataire);
 		incident.setStatut(StatutIncident.AFFECTE);
-		return incidentRepository.save(incident);
+		Incident enregistre = incidentRepository.save(incident);
+		noter(enregistre, enregistre.getDeclarant(), enregistre.getDateOuverture(),
+				TextesJournal.affectation(prestataire.getNom()));
+		return enregistre;
 	}
 
 	private Incident resoudre(String description, int heuresOuverture, int heuresResolution, Equipement equipement,
@@ -181,7 +191,17 @@ public class DemoDataLoader implements ApplicationRunner {
 		incident.setStatut(StatutIncident.RESOLU);
 		incident.setDateResolution(ilYa(heuresResolution));
 		incident.setPrestataire(prestataire);
-		return incidentRepository.save(incident);
+		Incident enregistre = incidentRepository.save(incident);
+		noter(enregistre, declarant, enregistre.getDateOuverture(), TextesJournal.DECLARATION);
+		if (prestataire != null) {
+			noter(enregistre, declarant, enregistre.getDateOuverture(), TextesJournal.affectation(prestataire.getNom()));
+		}
+		noter(enregistre, declarant, enregistre.getDateResolution(), TextesJournal.RESOLUTION);
+		return enregistre;
+	}
+
+	private void noter(Incident incident, Utilisateur auteur, LocalDateTime date, String action) {
+		evenementRepository.save(new EvenementIncident(incident, date, auteur.getPrenom(), action));
 	}
 
 	private LocalDateTime ilYa(int heures) {

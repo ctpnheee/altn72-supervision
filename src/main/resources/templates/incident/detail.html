@@ -106,6 +106,16 @@
             <dd th:text="${#temporals.format(detail.dateEvaluation, 'dd/MM/yyyy HH:mm')}">29/10/2026 18:00</dd>
         </th:block>
     </dl>
+
+    <h2>Journal</h2>
+    <p th:if="${detail.evenements.isEmpty()}">Aucun événement.</p>
+    <ol th:unless="${detail.evenements.isEmpty()}" class="journal">
+        <li th:each="evenement : ${detail.evenements}">
+            <time th:text="${#temporals.format(evenement.date, 'dd/MM/yyyy HH:mm')}">02/11/2026 20:37</time>
+            <span th:text="${evenement.auteur}">Alice</span>
+            — <span th:text="${evenement.action}">Affectation au prestataire Otis</span>
+        </li>
+    </ol>
 </section>
 </body>
 </html>

@@ -10,7 +10,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 import fr.efrei.altn72.supervision.api.dto.AffectationRequete;
+import fr.efrei.altn72.supervision.config.UtilisateurConnecte;
 import fr.efrei.altn72.supervision.service.IncidentService;
 import fr.efrei.altn72.supervision.service.IncidentService.IncidentResume;
 import jakarta.validation.Valid;
@@ -40,14 +43,15 @@ public class IncidentApiController {
 	}
 
 	@PutMapping("/{id}/prestataire")
-	IncidentResume affecter(@PathVariable Long id, @Valid @RequestBody AffectationRequete requete) {
-		incidentService.affecter(id, requete.prestataireId());
+	IncidentResume affecter(@PathVariable Long id, @Valid @RequestBody AffectationRequete requete,
+			@AuthenticationPrincipal UtilisateurConnecte connecte) {
+		incidentService.affecter(id, requete.prestataireId(), connecte.getUsername());
 		return incidentService.lire(id);
 	}
 
 	@PatchMapping("/{id}/resolution")
-	IncidentResume resoudre(@PathVariable Long id) {
-		incidentService.resoudre(id);
+	IncidentResume resoudre(@PathVariable Long id, @AuthenticationPrincipal UtilisateurConnecte connecte) {
+		incidentService.resoudre(id, connecte.getUsername());
 		return incidentService.lire(id);
 	}
 }

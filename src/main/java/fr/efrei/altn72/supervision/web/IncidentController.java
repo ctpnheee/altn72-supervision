@@ -79,15 +79,16 @@ public class IncidentController {
 			preparerDetail(id, connecte.getUsername(), model);
 			return VUE_DETAIL;
 		}
-		incidentService.affecter(id, affectation.getPrestataireId());
+		incidentService.affecter(id, affectation.getPrestataireId(), connecte.getUsername());
 		redirection.addFlashAttribute("succes", "Prestataire affecté.");
 		return "redirect:/incidents/" + id;
 	}
 
 	/** La date vient de l'horloge du service : le formulaire n'a pas de champ. */
 	@PostMapping("/incidents/{id}/resolution")
-	String resoudre(@PathVariable Long id, RedirectAttributes redirection) {
-		incidentService.resoudre(id);
+	String resoudre(@PathVariable Long id, @AuthenticationPrincipal UtilisateurConnecte connecte,
+			RedirectAttributes redirection) {
+		incidentService.resoudre(id, connecte.getUsername());
 		redirection.addFlashAttribute("succes", "Incident résolu.");
 		return "redirect:/incidents/" + id;
 	}
