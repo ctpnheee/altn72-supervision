@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: page('Incident', ~{::section})}">
+      th:replace="~{layout :: page('Incident', ~{::section})}" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <title>Incident</title>
 </head>
@@ -106,6 +106,60 @@
             <dd th:text="${#temporals.format(detail.dateEvaluation, 'dd/MM/yyyy HH:mm')}">29/10/2026 18:00</dd>
         </th:block>
     </dl>
+
+
+    <form th:if="${detail.statut.name() == 'RESOLU'
+              and detail.prestataireNom != null
+              and detail.note == null}"
+          sec:authorize="hasRole('RESPONSABLE')"
+          class="formulaire"
+          th:action="@{/incidents/{id}/evaluation(id=${detail.id})}"
+          th:object="${evaluation}"
+          method="post">
+
+        <h3>Évaluer l'intervention</h3>
+
+        <label for="note">Note de 1 à 5</label>
+
+        <select id="note"
+                th:field="*{note}"
+                th:errorclass="champ-invalide"
+                required>
+            <option value="">Choisir une note</option>
+            <option value="1">1 / 5</option>
+            <option value="2">2 / 5</option>
+            <option value="3">3 / 5</option>
+            <option value="4">4 / 5</option>
+            <option value="5">5 / 5</option>
+        </select>
+
+        <p class="erreur-champ"
+           th:if="${#fields.hasErrors('note')}"
+           th:errors="*{note}">
+            Note invalide
+        </p>
+
+        <label for="commentaireEvaluation">
+            Commentaire (facultatif)
+        </label>
+
+        <textarea id="commentaireEvaluation"
+                  th:field="*{commentaire}"
+                  th:errorclass="champ-invalide"
+                  maxlength="1000"
+                  rows="4"></textarea>
+
+        <p class="erreur-champ"
+           th:if="${#fields.hasErrors('commentaire')}"
+           th:errors="*{commentaire}">
+            Commentaire invalide
+        </p>
+
+        <button type="submit" class="bouton">
+            Enregistrer l'évaluation
+        </button>
+    </form>
+
 
     <h2>Journal</h2>
     <p th:if="${detail.evenements.isEmpty()}">Aucun événement.</p>

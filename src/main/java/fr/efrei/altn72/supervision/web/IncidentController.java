@@ -17,6 +17,7 @@ import fr.efrei.altn72.supervision.web.dto.AffectationForm;
 import fr.efrei.altn72.supervision.web.dto.DeclarationIncidentForm;
 import fr.efrei.altn72.supervision.web.dto.ModificationDescriptionForm;
 import jakarta.validation.Valid;
+import fr.efrei.altn72.supervision.web.dto.EvaluationForm;
 
 /** Pages du cycle de vie d'un incident : déclaration (F4), détail (F5, F6), affectation (F7) et résolution (F8). */
 @Controller
@@ -103,6 +104,9 @@ public class IncidentController {
 		}
 		if (!model.containsAttribute("affectation")) {
 			model.addAttribute("affectation", new AffectationForm());
+		}
+		if (!model.containsAttribute("evaluation")) {
+			model.addAttribute("evaluation", new EvaluationForm());
 		}
 	}
 }
