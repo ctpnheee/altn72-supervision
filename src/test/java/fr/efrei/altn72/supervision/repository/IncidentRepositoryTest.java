@@ -20,6 +20,7 @@ import fr.efrei.altn72.supervision.model.Utilisateur;
 import fr.efrei.altn72.supervision.model.enums.Profil;
 import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.model.enums.TypeEquipement;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
 class IncidentRepositoryTest {
@@ -92,4 +93,61 @@ class IncidentRepositoryTest {
 
 		assertThat(relu.getPrestataire()).isNull();
 	}
+
+
+	@Test
+	void historiqueContientUniquementLesResolusTriesParDateResolution() {
+
+		Incident ancien = new Incident(
+				"Résolution ancienne",
+				OUVERTURE,
+				equipement,
+				declarant);
+		ancien.setStatut(StatutIncident.RESOLU);
+		ancien.setDateResolution(OUVERTURE.plusDays(2));
+
+		Incident recent = new Incident(
+				"Résolution récente",
+				OUVERTURE,
+				equipement,
+				declarant);
+		recent.setStatut(StatutIncident.RESOLU);
+		recent.setDateResolution(OUVERTURE.plusDays(5));
+
+		Incident milieu = new Incident(
+				"Résolution intermédiaire",
+				OUVERTURE,
+				equipement,
+				declarant);
+		milieu.setStatut(StatutIncident.RESOLU);
+		milieu.setDateResolution(OUVERTURE.plusDays(3));
+
+		Incident actif = new Incident(
+				"Incident encore actif",
+				OUVERTURE,
+				equipement,
+				declarant);
+
+		entityManager.persist(ancien);
+		entityManager.persist(recent);
+		entityManager.persist(milieu);
+		entityManager.persist(actif);
+
+		entityManager.flush();
+		entityManager.clear();
+
+		var historique = incidentRepository.findHistoriqueResolu(
+				StatutIncident.RESOLU,
+				PageRequest.of(0, 10));
+
+		assertThat(historique.getContent())
+				.extracting(Incident::getDescription)
+				.containsExactly(
+						"Résolution récente",
+						"Résolution intermédiaire",
+						"Résolution ancienne");
+
+		assertThat(historique.getTotalElements()).isEqualTo(3);
+	}
+
 }
