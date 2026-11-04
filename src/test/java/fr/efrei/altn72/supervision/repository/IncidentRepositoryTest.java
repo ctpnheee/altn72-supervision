@@ -150,4 +150,37 @@ class IncidentRepositoryTest {
 		assertThat(historique.getTotalElements()).isEqualTo(3);
 	}
 
+
+	@Test
+	void tableauDeBordExclutLesIncidentsResolus() {
+
+		Incident actif = new Incident(
+				"Incident actif B9",
+				OUVERTURE,
+				equipement,
+				declarant);
+
+		Incident resolu = new Incident(
+				"Incident résolu B9",
+				OUVERTURE.minusDays(2),
+				equipement,
+				declarant);
+
+		resolu.setStatut(StatutIncident.RESOLU);
+		resolu.setDateResolution(OUVERTURE.minusDays(1));
+
+		entityManager.persist(actif);
+		entityManager.persist(resolu);
+		entityManager.flush();
+		entityManager.clear();
+
+		var resultat = incidentRepository.findActifsAvecEquipement(
+				StatutIncident.RESOLU);
+
+		assertThat(resultat)
+				.extracting(Incident::getDescription)
+				.contains("Incident actif B9")
+				.doesNotContain("Incident résolu B9");
+	}
+
 }

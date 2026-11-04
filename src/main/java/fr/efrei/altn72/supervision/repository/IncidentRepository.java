@@ -94,4 +94,21 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 			@Param("prestataireId") Long prestataireId);
 
 
+
+	/**
+	 * F11 : incidents actifs avec équipement et station.
+	 *
+	 * RG6 : les incidents résolus sont exclus.
+	 * Le niveau d'attention sera calculé par le service.
+	 */
+	@Query("""
+    SELECT i FROM Incident i
+    JOIN FETCH i.equipement e
+    JOIN FETCH e.station
+    WHERE i.statut <> :resolu
+    ORDER BY i.dateOuverture ASC, i.id ASC
+    """)
+	List<Incident> findActifsAvecEquipement(
+			@Param("resolu") StatutIncident resolu);
+
 }

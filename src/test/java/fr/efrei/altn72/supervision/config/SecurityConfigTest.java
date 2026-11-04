@@ -131,13 +131,15 @@ class SecurityConfigTest {
 				.andExpect(status().isForbidden());
 	}
 
+
 	@Test
 	void unResponsableAccedeAuTableauDeBordSansEtreBloque() throws Exception {
-		// La page n'existe pas encore (ticket B9) : 404 prouve que la sécurité a laissé passer.
+		// B9 : la page existe désormais et doit retourner HTTP 200.
 		mockMvc.perform(get("/tableau-de-bord").with(user(new UtilisateurConnecte(
-				new Utilisateur("alice", "hache", "Alice", Profil.RESPONSABLE)))))
-				.andExpect(status().isNotFound());
+						new Utilisateur("alice", "hache", "Alice", Profil.RESPONSABLE)))))
+				.andExpect(status().isOk());
 	}
+
 
 	@Test
 	void laDeconnexionExigeUnJetonCsrf() throws Exception {
