@@ -9,10 +9,11 @@
     <dialog id="modale-affectation"
             aria-labelledby="titre-modale-affectation"
             th:attr="data-csrf-token=${_csrf.token},
-                     data-csrf-header=${_csrf.headerName}"
-            th:attrappend="data-url-prestataires=@{/api/prestataires}">
+                 data-csrf-header=${_csrf.headerName},
+                 data-url-prestataires=@{/api/prestataires}">
 
-        <h2 id="titre-modale-affectation">
+
+    <h2 id="titre-modale-affectation">
             Affecter un prestataire
         </h2>
 

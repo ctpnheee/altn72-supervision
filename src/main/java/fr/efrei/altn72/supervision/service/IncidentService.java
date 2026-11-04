@@ -45,7 +45,19 @@ public class IncidentService {
 
 	static final String RESOLUTION_AVANT_OUVERTURE = "La date de résolution ne peut pas précéder la date d'ouverture.";
 
-	private static final String CONSIGNE_PILOTAGE = "Seul le responsable peut affecter un prestataire ou résoudre l'incident.";
+	static final String CONSIGNE_PILOTAGE = "Seul le responsable peut affecter un prestataire ou résoudre l'incident.";
+
+	static final String CONSIGNE_AGENT = "Vous pouvez corriger la description tant que personne n'a pris l'incident en charge.";
+
+	static final String CONSIGNE_RESPONSABLE = "Vous pouvez corriger la description tant que l'incident n'est pas résolu.";
+
+	static final String DEPUIS_OUVERTURE = "Depuis l'ouverture";
+
+	static final String ENTRE_OUVERTURE_ET_RESOLUTION = "Entre l'ouverture et la résolution";
+
+	static final String LIBELLE_AFFECTER = "Affecter le prestataire";
+
+	static final String LIBELLE_REAFFECTER = "Réaffecter le prestataire";
 
 	private final Clock clock;
 	private final IncidentRepository incidentRepository;
@@ -120,9 +132,9 @@ public class IncidentService {
 	@Transactional
 	public Incident declarer(Long equipementId, String description, String loginDeclarant) {
 		Equipement equipement = equipementRepository.findById(equipementId)
-				.orElseThrow(() -> new RessourceIntrouvableException("Équipement " + equipementId + " introuvable."));
+				.orElseThrow(() -> RessourceIntrouvableException.pour("Équipement", equipementId));
 		Utilisateur declarant = utilisateurRepository.findByLogin(loginDeclarant)
-				.orElseThrow(() -> new RessourceIntrouvableException("Utilisateur " + loginDeclarant + " introuvable."));
+				.orElseThrow(() -> RessourceIntrouvableException.pour("Utilisateur", loginDeclarant));
 
 		LocalDateTime ouverture = LocalDateTime.ofInstant(clock.instant(), clock.getZone());
 		Incident incident = new Incident(description.trim(), ouverture, equipement, declarant);
@@ -207,7 +219,7 @@ public class IncidentService {
 		}
 		String ancienNom = incident.getPrestataire() == null ? null : incident.getPrestataire().getNom();
 		Prestataire prestataire = prestataireRepository.findById(prestataireId)
-				.orElseThrow(() -> new RessourceIntrouvableException("Prestataire " + prestataireId + " introuvable."));
+				.orElseThrow(() -> RessourceIntrouvableException.pour("Prestataire", prestataireId));
 		incident.setPrestataire(prestataire);
 		incident.setStatut(StatutIncident.AFFECTE);
 		Incident enregistre = incidentRepository.save(incident);
@@ -270,7 +282,7 @@ public class IncidentService {
 
 	private Incident charger(Long id) {
 		return incidentRepository.findDetailParId(id)
-				.orElseThrow(() -> new RessourceIntrouvableException("Incident " + id + " introuvable."));
+				.orElseThrow(() -> RessourceIntrouvableException.pour("Incident", id));
 	}
 
 	private String consigne(String login, boolean modifiable) {
@@ -279,9 +291,9 @@ public class IncidentService {
 		}
 		Utilisateur utilisateur = utilisateurRepository.findByLogin(login).orElse(null);
 		if (utilisateur != null && utilisateur.getProfil() == Profil.AGENT) {
-			return "Vous pouvez corriger la description tant que personne n'a pris l'incident en charge.";
+			return CONSIGNE_AGENT;
 		}
-		return "Vous pouvez corriger la description tant que l'incident n'est pas résolu.";
+		return CONSIGNE_RESPONSABLE;
 	}
 
 	/**
@@ -301,7 +313,7 @@ public class IncidentService {
 		List<PrestataireChoix> prestataires = prestataireRepository.findAllByOrderByNomAsc().stream()
 				.map(prestataire -> new PrestataireChoix(prestataire.getId(), prestataire.getNom()))
 				.toList();
-		String libelle = incident.getPrestataire() == null ? "Affecter le prestataire" : "Réaffecter le prestataire";
+		String libelle = incident.getPrestataire() == null ? LIBELLE_AFFECTER : LIBELLE_REAFFECTER;
 		return new Pilotage(true, null, libelle, prestataires);
 	}
 
@@ -313,7 +325,7 @@ public class IncidentService {
 		Equipement equipement = incident.getEquipement();
 		return new DetailIncident(incident.getId(), incident.getDescription(), incident.getDateOuverture(),
 				incident.getDateResolution(), incident.getStatut(), formaterDuree(incident.getDateOuverture(), fin),
-				resolu ? "Entre l'ouverture et la résolution" : "Depuis l'ouverture",
+				precisionDuree(resolu),
 				resolu ? null : niveauAttentionCalculator.calculer(incident), equipement.getId(),
 				equipement.getReference(), equipement.getLibelle(), equipement.getStation().getNom(),
 				incident.getDeclarant().getPrenom(), prestataire == null ? null : prestataire.getNom(),
@@ -340,13 +352,17 @@ public class IncidentService {
 		return new IncidentResume(incident.getId(), incident.getDescription(), incident.getDateOuverture(),
 				incident.getDateResolution(), incident.getStatut(),
 				formaterDuree(incident.getDateOuverture(), finDeDuree(incident)),
-				resolu ? "Entre l'ouverture et la résolution" : "Depuis l'ouverture",
+				precisionDuree(resolu),
 				resolu ? null : niveauAttentionCalculator.calculer(incident), equipement.getId(),
 				equipement.getReference(), equipement.getLibelle(), equipement.getStation().getNom(),
 				incident.getDeclarant().getPrenom(), prestataire == null ? null : prestataire.getId(),
 				prestataire == null ? null : prestataire.getNom(), evaluation == null ? null : evaluation.getNote(),
 				evaluation == null ? null : evaluation.getCommentaire(),
 				evaluation == null ? null : evaluation.getDate());
+	}
+
+	private static String precisionDuree(boolean resolu) {
+		return resolu ? ENTRE_OUVERTURE_ET_RESOLUTION : DEPUIS_OUVERTURE;
 	}
 
 	/** Incident ouvert : jusqu'à maintenant. Incident résolu : jusqu'à sa date de résolution. */

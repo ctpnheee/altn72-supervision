@@ -168,6 +168,19 @@ travaille sur une information stable.
   - Le contrôleur passe le login. Le service ne lit pas le `SecurityContext` : un test unitaire publie l'événement
     sans contexte de sécurité. Le prénom affiché (« Alice ») est résolu dans l'écouteur.
   - La page reçoit `List<EvenementLigne>` déjà ordonnée (date, puis identifiant). La vue n'ordonne pas les dates.
+- Durcissement (A10) :
+  - `Incident.DESCRIPTION_MAX` est la borne de la colonne et des deux formulaires de description. Deux nombres
+    différents laisseraient passer une saisie que la base refuse, ou l'inverse.
+  - « Incident 4 introuvable. » est construit par `RessourceIntrouvableException.pour`. Le service, le journal et
+    l'évaluation utilisent la même phrase. Une copie divergente ferait diverger le 404 de la page et celui de l'API.
+  - La précision de durée et les libellés « Affecter » / « Réaffecter » sont des constantes du service, reprises
+    par la page et le JSON. La vue ne les recalcule pas.
+  - La page et l'API ont chacune la constante « Choisissez un prestataire. ». L'une ne référence pas l'autre :
+    un DTO de page ne dépend pas du JSON, et l'inverse non plus.
+  - `xmlns:sec` du détail pointait vers le namespace XHTML, donc `sec:authorize` n'était pas lu. Le formulaire
+    d'évaluation s'affichait aussi pour un agent. Le namespace est celui de Spring Security, comme dans le layout.
+  - Les tests couvrent la ligne de réaffectation, la ligne de résolution, et les lignes créées par l'API. Sans eux,
+    un oubli de `publier` après `resoudre` laisserait `./mvnw verify` vert.
 
 ## LOT ALPHA
 

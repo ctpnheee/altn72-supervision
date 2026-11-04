@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
+import fr.efrei.altn72.supervision.api.dto.AffectationRequete;
 import fr.efrei.altn72.supervision.config.UtilisateurConnecte;
 import fr.efrei.altn72.supervision.model.Equipement;
 import fr.efrei.altn72.supervision.model.Evaluation;
@@ -37,10 +38,12 @@ import fr.efrei.altn72.supervision.model.enums.StatutIncident;
 import fr.efrei.altn72.supervision.model.enums.TypeEquipement;
 import fr.efrei.altn72.supervision.repository.EquipementRepository;
 import fr.efrei.altn72.supervision.repository.EvaluationRepository;
+import fr.efrei.altn72.supervision.repository.EvenementIncidentRepository;
 import fr.efrei.altn72.supervision.repository.IncidentRepository;
 import fr.efrei.altn72.supervision.repository.PrestataireRepository;
 import fr.efrei.altn72.supervision.repository.StationRepository;
 import fr.efrei.altn72.supervision.repository.UtilisateurRepository;
+import fr.efrei.altn72.supervision.service.TextesJournal;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -70,6 +73,9 @@ class IncidentApiWebTest {
 
 	@Autowired
 	private EvaluationRepository evaluationRepository;
+
+	@Autowired
+	private EvenementIncidentRepository evenementRepository;
 
 	private Utilisateur agent;
 	private Utilisateur responsable;
@@ -164,6 +170,12 @@ class IncidentApiWebTest {
 				.andExpect(jsonPath("$.dateResolution").exists());
 		assertThat(equipementRepository.findById(equipement.getId()).orElseThrow().getEtat())
 				.isEqualTo(EtatEquipement.EN_SERVICE);
+		assertThat(evenementRepository.findByIncidentIdOrderByDateAscIdAsc(recent.getId()))
+				.extracting(evenement -> evenement.getAction())
+				.containsExactly(TextesJournal.affectation("Otis A8"), TextesJournal.RESOLUTION);
+		assertThat(evenementRepository.findByIncidentIdOrderByDateAscIdAsc(ancien.getId()))
+				.extracting(evenement -> evenement.getAuteur())
+				.containsExactly("Alice");
 	}
 
 	@Test
@@ -190,7 +202,7 @@ class IncidentApiWebTest {
 						.content("{}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.status").value(400))
-				.andExpect(jsonPath("$.erreurs.prestataireId").value("Choisissez un prestataire."));
+				.andExpect(jsonPath("$.erreurs.prestataireId").value(AffectationRequete.PRESTATAIRE_OBLIGATOIRE));
 	}
 
 	@Test

@@ -39,7 +39,7 @@ public class JournalIncident {
 	@Transactional
 	public void enregistrer(EvenementIncidentDemande demande) {
 		Incident incident = incidentRepository.findById(demande.incidentId())
-				.orElseThrow(() -> new RessourceIntrouvableException("Incident " + demande.incidentId() + " introuvable."));
+				.orElseThrow(() -> RessourceIntrouvableException.pour("Incident", demande.incidentId()));
 		String auteur = utilisateurRepository.findByLogin(demande.login())
 				.map(utilisateur -> utilisateur.getPrenom())
 				.orElse(demande.login());

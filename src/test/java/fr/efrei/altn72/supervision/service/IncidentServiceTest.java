@@ -152,7 +152,7 @@ class IncidentServiceTest {
 		DetailIncident detail = service.consulter(4L, "alice");
 
 		assertThat(detail.dureeOuverture()).isEqualTo("47 h");
-		assertThat(detail.precisionDuree()).isEqualTo("Depuis l'ouverture");
+		assertThat(detail.precisionDuree()).isEqualTo(IncidentService.DEPUIS_OUVERTURE);
 		assertThat(detail.niveau()).isEqualTo(NiveauAttention.VERT);
 		assertThat(detail.prestataireNom()).isNull();
 		assertThat(detail.note()).isNull();
@@ -201,7 +201,7 @@ class IncidentServiceTest {
 		DetailIncident detail = service.consulter(4L, "alice");
 
 		assertThat(detail.dureeOuverture()).isEqualTo("9 h 30 min");
-		assertThat(detail.precisionDuree()).isEqualTo("Entre l'ouverture et la résolution");
+		assertThat(detail.precisionDuree()).isEqualTo(IncidentService.ENTRE_OUVERTURE_ET_RESOLUTION);
 		assertThat(detail.niveau()).isNull();
 		assertThat(detail.note()).isEqualTo(5);
 		assertThat(detail.commentaireEvaluation()).isEqualTo("Intervention rapide");
@@ -259,7 +259,7 @@ class IncidentServiceTest {
 		DetailIncident detail = service.consulter(4L, "alice");
 
 		assertThat(detail.peutAffecterOuResoudre()).isTrue();
-		assertThat(detail.libelleAffectation()).isEqualTo("Affecter le prestataire");
+		assertThat(detail.libelleAffectation()).isEqualTo(IncidentService.LIBELLE_AFFECTER);
 		assertThat(detail.consignePilotage()).isNull();
 		assertThat(detail.prestataires()).extracting(PrestataireChoix::nom).containsExactly("Otis");
 	}
@@ -279,7 +279,7 @@ class IncidentServiceTest {
 		DetailIncident detail = service.consulter(4L, "alice");
 
 		assertThat(detail.peutAffecterOuResoudre()).isTrue();
-		assertThat(detail.libelleAffectation()).isEqualTo("Réaffecter le prestataire");
+		assertThat(detail.libelleAffectation()).isEqualTo(IncidentService.LIBELLE_REAFFECTER);
 	}
 
 	@Test
@@ -326,6 +326,9 @@ class IncidentServiceTest {
 
 		assertThat(incident.getStatut()).isEqualTo(StatutIncident.AFFECTE);
 		assertThat(incident.getPrestataire()).isSameAs(schindler);
+		ArgumentCaptor<EvenementIncidentDemande> demande = ArgumentCaptor.forClass(EvenementIncidentDemande.class);
+		verify(evenements).publishEvent(demande.capture());
+		assertThat(demande.getValue().action()).isEqualTo(TextesJournal.reaffectation("Otis", "Schindler"));
 	}
 
 	@Test
@@ -387,6 +390,10 @@ class IncidentServiceTest {
 		assertThat(enregistre.getPrestataire()).isNull();
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_SERVICE);
 		verify(equipementRepository).save(equipement);
+		ArgumentCaptor<EvenementIncidentDemande> demande = ArgumentCaptor.forClass(EvenementIncidentDemande.class);
+		verify(evenements).publishEvent(demande.capture());
+		assertThat(demande.getValue().login()).isEqualTo("alice");
+		assertThat(demande.getValue().action()).isEqualTo(TextesJournal.RESOLUTION);
 	}
 
 	@Test
@@ -418,6 +425,7 @@ class IncidentServiceTest {
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_PANNE);
 		verify(incidentRepository, never()).save(any());
 		verify(equipementRepository, never()).save(any());
+		verify(evenements, never()).publishEvent(any());
 	}
 
 	@Test
@@ -466,6 +474,7 @@ class IncidentServiceTest {
 		assertThat(equipement.getEtat()).isEqualTo(EtatEquipement.EN_SERVICE);
 		verify(incidentRepository, never()).save(any());
 		verify(incidentRepository, never()).countByEquipementIdAndStatutNot(any(), any());
+		verify(evenements, never()).publishEvent(any());
 	}
 
 	@Test
@@ -477,7 +486,7 @@ class IncidentServiceTest {
 		IncidentResume resume = service.lire(4L);
 
 		assertThat(resume.dureeOuverture()).isEqualTo("47 h");
-		assertThat(resume.precisionDuree()).isEqualTo("Depuis l'ouverture");
+		assertThat(resume.precisionDuree()).isEqualTo(IncidentService.DEPUIS_OUVERTURE);
 		assertThat(resume.niveau()).isEqualTo(NiveauAttention.VERT);
 		assertThat(resume.prestataireId()).isNull();
 		assertThat(resume.note()).isNull();
