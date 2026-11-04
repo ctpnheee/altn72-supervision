@@ -26,6 +26,11 @@ public class IncidentController {
 	static final String VUE_DECLARATION = "incident/declarer";
 	static final String VUE_DETAIL = "incident/detail";
 
+	static final String SUCCES_DECLARATION = "Incident déclaré.";
+	static final String SUCCES_DESCRIPTION = "Description mise à jour.";
+	static final String SUCCES_AFFECTATION = "Prestataire affecté.";
+	static final String SUCCES_RESOLUTION = "Incident résolu.";
+
 	private final IncidentService incidentService;
 
 	public IncidentController(IncidentService incidentService) {
@@ -47,7 +52,7 @@ public class IncidentController {
 			return VUE_DECLARATION;
 		}
 		incidentService.declarer(declaration.getEquipementId(), declaration.getDescription(), connecte.getUsername());
-		redirection.addFlashAttribute("succes", "Incident déclaré.");
+		redirection.addFlashAttribute("succes", SUCCES_DECLARATION);
 		return "redirect:/incidents/nouveau";
 	}
 
@@ -67,7 +72,7 @@ public class IncidentController {
 			return VUE_DETAIL;
 		}
 		incidentService.modifierDescription(id, modification.getDescription(), connecte.getUsername());
-		redirection.addFlashAttribute("succes", "Description mise à jour.");
+		redirection.addFlashAttribute("succes", SUCCES_DESCRIPTION);
 		return "redirect:/incidents/" + id;
 	}
 
@@ -81,7 +86,7 @@ public class IncidentController {
 			return VUE_DETAIL;
 		}
 		incidentService.affecter(id, affectation.getPrestataireId(), connecte.getUsername());
-		redirection.addFlashAttribute("succes", "Prestataire affecté.");
+		redirection.addFlashAttribute("succes", SUCCES_AFFECTATION);
 		return "redirect:/incidents/" + id;
 	}
 
@@ -90,7 +95,7 @@ public class IncidentController {
 	String resoudre(@PathVariable Long id, @AuthenticationPrincipal UtilisateurConnecte connecte,
 			RedirectAttributes redirection) {
 		incidentService.resoudre(id, connecte.getUsername());
-		redirection.addFlashAttribute("succes", "Incident résolu.");
+		redirection.addFlashAttribute("succes", SUCCES_RESOLUTION);
 		return "redirect:/incidents/" + id;
 	}
 

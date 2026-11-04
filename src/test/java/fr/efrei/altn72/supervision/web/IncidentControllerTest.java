@@ -73,7 +73,7 @@ class IncidentControllerTest {
 						.param("description", "   "))
 				.andExpect(status().isOk())
 				.andExpect(view().name("incident/declarer"))
-				.andExpect(content().string(containsString("Décrivez la panne.")));
+				.andExpect(content().string(containsString(Incident.DESCRIPTION_OBLIGATOIRE)));
 		verify(incidentService, never()).declarer(any(), any(), any());
 	}
 
@@ -100,7 +100,7 @@ class IncidentControllerTest {
 						.param("description", "Porte bloquée"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/nouveau"))
-				.andExpect(flash().attribute("succes", "Incident déclaré."));
+				.andExpect(flash().attribute("succes", IncidentController.SUCCES_DECLARATION));
 		verify(incidentService).declarer(7L, "Porte bloquée", "alice");
 	}
 
@@ -151,7 +151,7 @@ class IncidentControllerTest {
 						.param("description", "   "))
 				.andExpect(status().isOk())
 				.andExpect(view().name("incident/detail"))
-				.andExpect(content().string(containsString("Décrivez la panne.")));
+				.andExpect(content().string(containsString(Incident.DESCRIPTION_OBLIGATOIRE)));
 		verify(incidentService).controlerDroitModification(12L, "alice");
 		verify(incidentService, never()).modifierDescription(any(), any(), any());
 	}
@@ -173,7 +173,7 @@ class IncidentControllerTest {
 						.param("description", "Cabine arrêtée"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/12"))
-				.andExpect(flash().attribute("succes", "Description mise à jour."));
+				.andExpect(flash().attribute("succes", IncidentController.SUCCES_DESCRIPTION));
 		verify(incidentService).modifierDescription(12L, "Cabine arrêtée", "alice");
 	}
 
@@ -220,7 +220,7 @@ class IncidentControllerTest {
 						.param("prestataireId", "5"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/12"))
-				.andExpect(flash().attribute("succes", "Prestataire affecté."));
+				.andExpect(flash().attribute("succes", IncidentController.SUCCES_AFFECTATION));
 		verify(incidentService).affecter(12L, 5L, "alice");
 	}
 
@@ -229,7 +229,7 @@ class IncidentControllerTest {
 		mockMvc.perform(post("/incidents/12/resolution").with(connecte(Profil.RESPONSABLE)).with(csrf()))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/incidents/12"))
-				.andExpect(flash().attribute("succes", "Incident résolu."));
+				.andExpect(flash().attribute("succes", IncidentController.SUCCES_RESOLUTION));
 		verify(incidentService).resoudre(12L, "alice");
 	}
 

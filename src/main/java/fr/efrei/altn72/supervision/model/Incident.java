@@ -23,12 +23,20 @@ import jakarta.validation.constraints.NotNull;
 @Entity
 public class Incident {
 
+	/** Même borne pour la colonne et les formulaires : une saisie acceptée doit tenir en base. */
+	public static final int DESCRIPTION_MAX = 1000;
+
+	public static final String DESCRIPTION_OBLIGATOIRE = "Décrivez la panne.";
+
+	public static final String DESCRIPTION_TROP_LONGUE = "La description ne peut pas dépasser " + DESCRIPTION_MAX
+			+ " caractères.";
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@NotBlank
-	@Column(nullable = false, length = 1000)
+	@Column(nullable = false, length = DESCRIPTION_MAX)
 	private String description;
 
 	@NotNull

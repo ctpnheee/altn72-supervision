@@ -44,8 +44,7 @@ public class EvaluationService {
             String commentaire) {
 
         Incident incident = incidentRepository.findById(idIncident)
-                .orElseThrow(() -> new RessourceIntrouvableException(
-                        "Incident " + idIncident + " introuvable."));
+                .orElseThrow(() -> RessourceIntrouvableException.pour("Incident", idIncident));
 
         if (incident.getStatut() != StatutIncident.RESOLU) {
             throw new TransitionInterditeException(
