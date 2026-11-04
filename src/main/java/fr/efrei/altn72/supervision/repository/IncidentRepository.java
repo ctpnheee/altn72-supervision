@@ -105,6 +105,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
     SELECT i FROM Incident i
     JOIN FETCH i.equipement e
     JOIN FETCH e.station
+    LEFT JOIN FETCH i.prestataire
     WHERE i.statut <> :resolu
     ORDER BY i.dateOuverture ASC, i.id ASC
     """)

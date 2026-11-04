@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="modale">
+
+    <dialog id="modale-affectation"
+            aria-labelledby="titre-modale-affectation"
+            th:attr="data-csrf-token=${_csrf.token},
+                     data-csrf-header=${_csrf.headerName}"
+            th:attrappend="data-url-prestataires=@{/api/prestataires}">
+
+        <h2 id="titre-modale-affectation">
+            Affecter un prestataire
+        </h2>
+
+        <form id="formulaire-affectation-modale"
+              class="formulaire">
+
+            <label for="choix-prestataire">
+                Prestataire
+            </label>
+
+            <select id="choix-prestataire" required>
+                <option value="">
+                    Chargement des prestataires...
+                </option>
+            </select>
+
+            <p id="erreur-affectation-modale"
+               class="message message-erreur"
+               role="alert"
+               hidden></p>
+
+            <button type="submit"
+                    id="envoyer-affectation"
+                    class="bouton">
+                Enregistrer l'affectation
+            </button>
+
+            <button type="button"
+                    id="fermer-affectation"
+                    class="bouton">
+                Annuler
+            </button>
+        </form>
+    </dialog>
+
+    <script defer
+            th:src="@{/js/affectation-modale.js}">
+    </script>
+
+</th:block>
+
+</body>
+</html>
