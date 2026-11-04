@@ -34,7 +34,7 @@ de l'IDE (Spring ne lit pas le fichier `.env`). Ne jamais les versionner.
    - Block force pushes.
 3. Le workflow `.github/workflows/ci.yml` lance `./mvnw verify` sur chaque pull request et chaque push sur `main`.
 
-Convention de branches : `feature/F4-declaration-incident`, `fix/…`, `docs/…`.
+Convention de branches : `feature/<ticket>-<sujet>`, par exemple `feature/A5-declarer-incident`, `fix/…`, `docs/…`.
 Convention de commits : préfixer par la fonctionnalité, par exemple `F7: réaffectation d'un prestataire`.
 
 ## 3. Google Cloud (une seule fois)

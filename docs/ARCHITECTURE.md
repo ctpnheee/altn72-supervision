@@ -99,7 +99,7 @@ flowchart TB
 | **Composants**        | `@Controller` (Thymeleaf), `@RestController` (`/api`), DTO de formulaire et de réponse, `MvcExceptionHandler`, `ApiExceptionHandler`.                                                         |
 | **Entrées / sorties** | Entrée : requête HTTP. Sortie : nom de vue + `Model`, redirection, ou JSON.                                                                                                                   |
 | **Ne contient pas**   | De calcul métier (pas de `if (statut == RESOLU)`), d'appel à un repository, de `try/catch` sur les exceptions métier (traitées par les `@ControllerAdvice`).                                  |
-| **Exemple**           | `IncidentController.resoudre(id)` appelle `incidentService.resoudre(id)` puis redirige vers `/incidents/{id}`. La vérification « déjà résolu ? » n'est pas dans le contrôleur.                |
+| **Exemple**           | `IncidentController.resoudre(id, login)` appelle `incidentService.resoudre(id, login)` puis redirige vers `/incidents/{id}`. La vérification « déjà résolu ? » n'est pas dans le contrôleur. Le login sert au journal métier, pas à une règle HTTP. |
 | **Tests**             | MockMvc : statut HTTP, vue rendue, messages de validation, 404 sur ressource inexistante.                                                                                                     |
 
 #### Vues — `templates/`
@@ -108,15 +108,15 @@ flowchart TB
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Responsabilité**  | Afficher les données reçues et proposer les actions autorisées.                                                                                                                      |
 | **Composants**      | `layout.html` (en-tête « Bonjour Prénom (profil) »), fragments, une page par écran.                                                                                                  |
-| **Ne contient pas** | De calcul : le niveau d'attention arrive déjà calculé (`VERT`, `ORANGE`…), la vue ne fait que lui associer une couleur CSS. Masquer un bouton est un confort, jamais une protection. |
+| **Ne contient pas** | De calcul : le niveau d'attention arrive déjà calculé (`VERT`, `ORANGE`…), la vue ne fait que lui associer une couleur CSS. Masquer un bouton est un confort, jamais une protection. Le formulaire d'évaluation du détail est l'exception : il s'affiche si le statut est `RESOLU`, si un prestataire est présent et si aucune note n'existe. Le refus réel reste dans `EvaluationService` (RG8) et dans `@PreAuthorize`. |
 
 #### Couche service — `service/`
 
 |                       |                                                                                                                                                                         |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Responsabilité**    | Porter **toutes** les règles de gestion RG1 à RG10, orchestrer les repositories, délimiter les transactions (`@Transactional`), lever des exceptions métier explicites. |
-| **Composants**        | `IncidentService` (cycle de vie), `EquipementService`, `EvaluationService`, `TableauDeBordService`, `NiveauAttentionCalculator`.                                        |
-| **Entrées / sorties** | Entrée : identifiants et valeurs simples. Sortie : entités ou objets de lecture (`IncidentVue`, `IndicateursTableauDeBord`) déjà prêts à afficher.                      |
+| **Composants**        | `IncidentService` (cycle de vie), `JournalIncident` (écoute des événements), `EquipementService`, `HistoriqueService`, `EvaluationService`, `PrestataireService`, `TableauDeBordService`, `NiveauAttentionCalculator`. |
+| **Entrées / sorties** | Entrée : identifiants et valeurs simples. Sortie : entités ou objets de lecture déjà prêts à afficher (`DetailIncident`, `IncidentResume`, `FicheEquipementVue`, `LigneHistorique`, `FichePrestataire`, `TableauDeBord`). |
 | **Ne contient pas**   | De notion HTTP, de vue, de DTO de formulaire, de SQL. N'appelle jamais `LocalDateTime.now()` : l'heure vient du `Clock` injecté.                                        |
 | **Tests**             | Tests unitaires JUnit avec `Clock.fixed` et repositories simulés : seuils 47 h / 48 h / 72 h, transitions interdites, RG8.                                              |
 
@@ -128,7 +128,7 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 |                     |                                                                                                                                              |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Responsabilité**  | Lire et écrire les entités : requêtes dérivées du nom des méthodes, requêtes JPQL, une requête SQL native.                                   |
-| **Composants**      | `StationRepository`, `EquipementRepository`, `IncidentRepository`, `PrestataireRepository`, `EvaluationRepository`, `UtilisateurRepository`. |
+| **Composants**      | `StationRepository`, `EquipementRepository`, `IncidentRepository`, `EvenementIncidentRepository`, `PrestataireRepository`, `EvaluationRepository`, `UtilisateurRepository`. La requête native est `IncidentRepository.compterIncidentsActifsParStation`. |
 | **Ne contient pas** | De décision métier : `findByStatutNot(RESOLU)` dit _comment_ trouver les incidents actifs, le service décide _quand_ et _pourquoi_.          |
 | **Tests**           | `@DataJpaTest` sur H2 : tri de l'historique, unicité de la référence, requête native.                                                        |
 
@@ -137,7 +137,7 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 |                     |                                                                                                                                          |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **Responsabilité**  | Représenter le domaine (entités, relations, enums) et garantir ses invariants simples : champs obligatoires, unicité, bornes de la note. |
-| **Composants**      | `Station`, `Equipement`, `Incident`, `Prestataire`, `Evaluation`, `Utilisateur`, enums.                                                  |
+| **Composants**      | `Station`, `Equipement`, `Incident`, `EvenementIncident`, `Prestataire`, `Evaluation`, `Utilisateur`, enums. Un événement de journal appartient à un incident. |
 | **Ne contient pas** | De dépendance à Spring MVC ni aux services. Le niveau d'attention n'y est pas stocké (il dépend de l'heure courante).                    |
 
 #### Éléments transverses
@@ -170,6 +170,8 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 - **Responsabilité unique (S)** : chaque couche, et dans la couche service chaque classe, n'a qu'une raison
   de changer. Modifier les seuils d'urgence ne touche que `NiveauAttentionCalculator` ; changer l'apparence
   d'un badge ne touche que la vue.
+- **Ouvert / fermé (O)** : `IncidentService` publie `EvenementIncidentDemande` après une déclaration, une affectation
+  ou une résolution. `JournalIncident` écrit la ligne. Un autre écouteur s'ajoute sans modifier `affecter`.
 - **Inversion des dépendances (D)** : les services dépendent d'abstractions (`Clock`, interfaces de repository
   injectées par Spring), ce qui permet de les tester sans base ni horloge réelle.
 
@@ -187,11 +189,13 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 ```
 fr.efrei.altn72.supervision
 ├── config/        SecurityConfig, ClockConfig (bean java.time.Clock), OpenApiConfig
-├── model/         Station, Equipement, Incident, Prestataire, Evaluation, Utilisateur
+├── model/         Station, Equipement, Incident, Prestataire, Evaluation, Utilisateur, EvenementIncident
 │   └── enums/     TypeEquipement, EtatEquipement, StatutIncident, NiveauAttention, Profil
-├── repository/    StationRepository, EquipementRepository, IncidentRepository, …
-├── service/       IncidentService, EquipementService, EvaluationService,
-│                  TableauDeBordService, NiveauAttentionCalculator
+├── repository/    StationRepository, EquipementRepository, IncidentRepository,
+│                  EvenementIncidentRepository, …
+├── service/       IncidentService, JournalIncident, EquipementService, HistoriqueService,
+│                  EvaluationService, PrestataireService, TableauDeBordService,
+│                  NiveauAttentionCalculator
 ├── exception/     exceptions métier personnalisées (messages en français)
 ├── web/           contrôleurs MVC, dto/, MvcExceptionHandler
 ├── api/           contrôleurs REST, dto/, ApiExceptionHandler
@@ -208,6 +212,7 @@ flowchart LR
     STATION["<b>STATION</b><hr/>id (PK)<br/>nom"]
     EQUIPEMENT["<b>EQUIPEMENT</b><hr/>id (PK)<br/>reference (unique, RG9)<br/>libelle<br/>type<br/>etat"]
     INCIDENT["<b>INCIDENT</b><hr/>id (PK)<br/>description<br/>dateOuverture<br/>statut<br/>dateResolution (nullable)"]
+    EVENEMENT["<b>EVENEMENT</b><hr/>id (PK)<br/>date<br/>auteur<br/>action"]
     PRESTATAIRE["<b>PRESTATAIRE</b><hr/>id (PK)<br/>nom<br/>email<br/>telephone"]
     EVALUATION["<b>EVALUATION</b><hr/>id (PK)<br/>note (1 à 5)<br/>commentaire (nullable)<br/>date"]
     UTILISATEUR["<b>UTILISATEUR</b><hr/>id (PK)<br/>login (unique)<br/>motDePasse (haché BCrypt)<br/>prenom<br/>profil"]
@@ -217,12 +222,14 @@ flowchart LR
     PRENDRE([prend en charge])
     EVALUER([est évalué par])
     DECLARER([déclare])
+    TRACER([trace])
 
     STATION ---|"0,n"| CONTENIR ---|"1,1"| EQUIPEMENT
     EQUIPEMENT ---|"0,n"| CONCERNER ---|"1,1"| INCIDENT
     PRESTATAIRE ---|"0,n"| PRENDRE ---|"0,1"| INCIDENT
     INCIDENT ---|"0,1"| EVALUER ---|"1,1"| EVALUATION
     UTILISATEUR ---|"0,n"| DECLARER ---|"1,1"| INCIDENT
+    INCIDENT ---|"0,n"| TRACER ---|"1,1"| EVENEMENT
 ```
 
 Enums :
@@ -290,12 +297,14 @@ sequenceDiagram
     S->>S: session valide et profil RESPONSABLE ? (RG11)
     S->>C: requête autorisée
     C->>C: @Valid AffectationForm
-    C->>IS: affecter(42, prestataireId)
-    IS->>Rep: findById(42)
+    C->>IS: affecter(42, prestataireId, login)
+    IS->>Rep: findDetailParId(42)
     Rep->>DB: SELECT
     IS->>IS: statut != RESOLU ? (RG5)
     IS->>Rep: save(incident)
     Rep->>DB: UPDATE
+    IS->>IS: publie EvenementIncidentDemande
+    Note over IS: JournalIncident écrit la ligne<br/>dans la même transaction
     IS-->>C: incident
     C-->>R: redirect /incidents/42
 ```
@@ -329,7 +338,8 @@ Aucune trace technique n'est affichée à l'utilisateur.
 | Affecter, résoudre, évaluer (F7, F8, F10) | oui         | interdit                                            |
 | Historique (F9)                           | oui         | lecture                                             |
 | Tableau de bord (F11)                     | oui         | interdit                                            |
-| API `/api/**` (F12)                       | oui         | lecture                                             |
+| API des incidents `/api/incidents` (F12)  | écriture    | lecture                                             |
+| `GET /api/prestataires`                   | oui         | interdit (fenêtre modale d'affectation)             |
 
 Restrictions appliquées côté serveur par `requestMatchers` dans `SecurityConfig` et `@PreAuthorize` sur
 les services ; masquer un bouton dans la vue n'est qu'un confort.
