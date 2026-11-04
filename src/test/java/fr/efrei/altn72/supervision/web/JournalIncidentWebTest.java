@@ -75,6 +75,7 @@ class JournalIncidentWebTest {
 
 	private Utilisateur responsable;
 	private Prestataire otis;
+	private Prestataire schindler;
 	private Equipement equipement;
 	private Incident ouvert;
 
@@ -85,6 +86,7 @@ class JournalIncidentWebTest {
 		equipement.setEtat(EtatEquipement.EN_PANNE);
 		equipement = equipementRepository.save(equipement);
 		otis = prestataireRepository.save(new Prestataire("Otis A9", "otis-a9@example.org", "0140000091"));
+		schindler = prestataireRepository.save(new Prestataire("Schindler A9", "schindler-a9@example.org", "0140000092"));
 		responsable = utilisateurRepository.save(new Utilisateur("a9-responsable", "hache", "Alice", Profil.RESPONSABLE));
 		LocalDateTime ouverture = LocalDateTime.ofInstant(clock.instant(), clock.getZone()).minusHours(2);
 		ouvert = incidentRepository.save(new Incident("Panne A9", ouverture, equipement, responsable));
@@ -110,6 +112,30 @@ class JournalIncidentWebTest {
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Alice")))
 				.andExpect(content().string(containsString(TextesJournal.affectation("Otis A9"))));
+	}
+
+	@Test
+	void reaffecterPuisResoudreAjoutentLesLignesCorrespondantes() throws Exception {
+		mockMvc.perform(post("/incidents/" + ouvert.getId() + "/prestataire").with(connecte(responsable)).with(csrf())
+						.param("prestataireId", otis.getId().toString()))
+				.andExpect(status().is3xxRedirection());
+		mockMvc.perform(post("/incidents/" + ouvert.getId() + "/prestataire").with(connecte(responsable)).with(csrf())
+						.param("prestataireId", schindler.getId().toString()))
+				.andExpect(status().is3xxRedirection());
+		mockMvc.perform(post("/incidents/" + ouvert.getId() + "/resolution").with(connecte(responsable)).with(csrf()))
+				.andExpect(status().is3xxRedirection());
+
+		var lignes = evenementRepository.findByIncidentIdOrderByDateAscIdAsc(ouvert.getId());
+		assertThat(lignes).extracting(EvenementIncident::getAction).containsExactly(
+				TextesJournal.affectation("Otis A9"),
+				TextesJournal.reaffectation("Otis A9", "Schindler A9"),
+				TextesJournal.RESOLUTION);
+		assertThat(lignes).allSatisfy(ligne -> assertThat(ligne.getAuteur()).isEqualTo("Alice"));
+
+		mockMvc.perform(get("/incidents/" + ouvert.getId()).with(connecte(responsable)))
+				.andExpect(status().isOk())
+				// Thymeleaf écrit l'apostrophe &#39; : on vérifie le début de la phrase.
+				.andExpect(content().string(containsString("Résolution de l")));
 	}
 
 	@Test
