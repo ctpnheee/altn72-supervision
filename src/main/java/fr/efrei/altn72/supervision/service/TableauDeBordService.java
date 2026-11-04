@@ -166,7 +166,7 @@ public class TableauDeBordService {
                 rouges,
                 prisEnCharge,
                 moyenne,
-                repartirParStation(toutesLesVues));
+                chargerRepartitionStations());
     }
 
     private IncidentVue convertir(
@@ -218,26 +218,25 @@ public class TableauDeBordService {
         };
     }
 
+
     /**
-     * Regroupement des incidents actifs par station.
+     * B10 : répartition des incidents actifs par station.
      *
-     * Cette version fonctionne en Java.
-     * B10 introduira la requête SQL native demandée.
+     * Les données proviennent de l'unique requête SQL
+     * native déclarée dans IncidentRepository.
+     *
+     * La transformation vers StatistiqueStation reste
+     * dans le service, pas dans le contrôleur ni la vue.
      */
-    private List<StatistiqueStation> repartirParStation(
-            List<IncidentVue> incidents) {
+    private List<StatistiqueStation> chargerRepartitionStations() {
 
-        Map<String, Long> compteurs = new TreeMap<>();
-
-        for (IncidentVue incident : incidents) {
-            compteurs.merge(incident.stationNom(), 1L, Long::sum);
-        }
-
-        List<StatistiqueStation> resultat = new ArrayList<>();
-
-        compteurs.forEach((nom, nombre) ->
-                resultat.add(new StatistiqueStation(nom, nombre)));
-
-        return resultat;
+        return incidentRepository
+                .compterIncidentsActifsParStation()
+                .stream()
+                .map(resultat -> new StatistiqueStation(
+                        resultat.getStationNom(),
+                        resultat.getNombre()))
+                .toList();
     }
+
 }

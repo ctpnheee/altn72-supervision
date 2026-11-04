@@ -183,4 +183,75 @@ class IncidentRepositoryTest {
 				.doesNotContain("Incident résolu B9");
 	}
 
+
+
+	@Test
+	void requeteNativeCompteLesIncidentsActifsParStation() {
+
+		// Première station : Châtelet, déjà créée par @BeforeEach.
+		Incident premierChatelet = new Incident(
+				"Ascenseur bloqué",
+				OUVERTURE,
+				equipement,
+				declarant);
+
+		Incident secondChatelet = new Incident(
+				"Porte bloquée",
+				OUVERTURE.plusHours(1),
+				equipement,
+				declarant);
+
+		// Incident résolu : ne doit pas être compté.
+		Incident resolu = new Incident(
+				"Ancien problème résolu",
+				OUVERTURE.minusDays(2),
+				equipement,
+				declarant);
+
+		resolu.setStatut(StatutIncident.RESOLU);
+		resolu.setDateResolution(OUVERTURE.minusDays(1));
+
+		// Deuxième station avec un incident actif.
+		Station republique = entityManager.persist(
+				new Station("République"));
+
+		Equipement equipementRepublique = entityManager.persist(
+				new Equipement(
+						"ESC-B10-001",
+						"Escalier mécanique",
+						TypeEquipement.ESCALIER_MECANIQUE,
+						republique));
+
+		Incident incidentRepublique = new Incident(
+				"Escalier arrêté",
+				OUVERTURE,
+				equipementRepublique,
+				declarant);
+
+		incidentRepublique.setStatut(StatutIncident.AFFECTE);
+
+		entityManager.persist(premierChatelet);
+		entityManager.persist(secondChatelet);
+		entityManager.persist(resolu);
+		entityManager.persist(incidentRepublique);
+
+		entityManager.flush();
+		entityManager.clear();
+
+		var statistiques = incidentRepository
+				.compterIncidentsActifsParStation();
+
+		assertThat(statistiques).hasSize(2);
+
+		assertThat(statistiques)
+				.extracting(
+						IncidentRepository.IncidentsActifsParStation::getStationNom)
+				.containsExactly("Châtelet", "République");
+
+		assertThat(statistiques)
+				.extracting(
+						IncidentRepository.IncidentsActifsParStation::getNombre)
+				.containsExactly(2L, 1L);
+	}
+
 }
