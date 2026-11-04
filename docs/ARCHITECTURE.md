@@ -187,10 +187,10 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 ```
 fr.efrei.altn72.supervision
 ├── config/        SecurityConfig, ClockConfig (bean java.time.Clock), OpenApiConfig
-├── model/         Station, Equipement, Incident, Prestataire, Evaluation, Utilisateur
+├── model/         Station, Equipement, Incident, Prestataire, Evaluation, Utilisateur, EvenementIncident
 │   └── enums/     TypeEquipement, EtatEquipement, StatutIncident, NiveauAttention, Profil
 ├── repository/    StationRepository, EquipementRepository, IncidentRepository, …
-├── service/       IncidentService, EquipementService, EvaluationService,
+├── service/       IncidentService, JournalIncident, EquipementService, EvaluationService,
 │                  TableauDeBordService, NiveauAttentionCalculator
 ├── exception/     exceptions métier personnalisées (messages en français)
 ├── web/           contrôleurs MVC, dto/, MvcExceptionHandler

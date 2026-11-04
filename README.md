@@ -20,6 +20,9 @@ Prérequis : Java 21+ et MySQL 8.4 installé localement.
 
 L'application est disponible sur <http://localhost:8080>.
 
+L'application déployée est <https://supervision-elblh4yp7a-ew.a.run.app>
+(Cloud Run, base Cloud SQL MySQL 8.4). Chaque merge sur `main` la redéploie.
+
 ### Base de données locale
 
 Créer une fois la base et le compte utilisateur (en tant que `root`) :
@@ -58,7 +61,9 @@ avec BCrypt, jamais en clair.
 | `agent` | `demo1234` | AGENT (Bruno) |
 
 Les dates des incidents sont calculées par rapport à l'heure de démarrage (2 h, 47 h, 48 h, 71 h, 72 h, 100 h)
-pour que chaque niveau d'attention soit visible. Pour recréer un jeu frais (par exemple juste avant une démo) :
+pour que chaque niveau d'attention soit visible. Les fonctionnalités F1 à F12 et les deux lots alpha
+(journal métier, fenêtre modale d'affectation) sont en place. Il n'y a pas de création de compte.
+Pour recréer un jeu frais (par exemple juste avant une démo) :
 
 ```bash
 APP_DEMO_RESET=true ./mvnw spring-boot:run

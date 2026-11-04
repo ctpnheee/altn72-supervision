@@ -1,6 +1,6 @@
 # Journal — Supervision ALTN72 (2026–27)
 
-**Groupe :** à compléter
+**Groupe :** Daphne et Jhermaine Crisostomo
 
 ## README
 
@@ -11,7 +11,7 @@
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
-- Limites connues : modèle, connexion par profil, layout, données de démo et consultation des équipements (F2–F3) en place ; la déclaration (F4), le détail (F5), la modification de la description (F6), l'affectation (F7), la résolution (F8), l'API (F12) et le journal métier d'un incident sont disponibles ; F9 à F11 restent à développer
+- Limites connues : F1 à F12 sont en place, ainsi que les deux lots alpha (journal métier de l'incident, fenêtre modale d'affectation). Il n'y a pas d'inscription : les comptes viennent des données de démonstration. Hors de ce périmètre, rien n'est laissé ouvert dans le plan.
 
 ## ARCHITECTURE
 
@@ -31,10 +31,20 @@ flowchart TB
 
 ## TESTS
 
-- Stratégie : tests unitaires métier, tests MVC et tests d'intégration à compléter progressivement
+- Stratégie : un test unitaire par règle métier (service, horloge fixe, dépôts simulés), un test MockMvc par page ou API, un `@DataJpaTest` quand l'ordre SQL ou une contrainte doit être vu en base. La base des tests est H2 en mode MySQL. La base MySQL locale ne sert pas à `./mvnw verify`.
 - Commande : `./mvnw verify`
-- Couvert : chargement du contexte
-- Non couvert : cas d'usage métier, encore non implémentés
+- Couvert :
+  - F1 : visiteur non connecté renvoyé vers `/login`, mauvais mot de passe, déconnexion, agent interdit sur le tableau de bord
+  - F2–F3 : liste des stations, équipements, fiche, incidents du plus récent au plus ancien
+  - F4–F8 : déclaration, détail, durée avec horloge fixe, refus 403 d'un agent sur un incident affecté, affectation, résolution, équipement qui revient `EN_SERVICE`
+  - F9 : ordre de l'historique en `@DataJpaTest`
+  - F10 : refus si l'incident n'est pas résolu, refus si déjà évalué, note hors bornes, moyenne
+  - F11 : incident résolu absent du tableau, filtres, agent → 403
+  - F12 : 401 sans session, 404 incident inexistant, 409 transition interdite, lecture des prestataires réservée au responsable
+  - B10 : deux incidents actifs à Châtelet, un à République, le résolu exclu. La même requête SQL, lancée sur la base locale, renvoie Châtelet 2, Gare de Lyon 3, République 3
+  - Alpha 5 : affecter ou résoudre crée une ligne de journal (qui, quand, quoi), y compris via l'API
+  - Alpha 6 : `GET /api/prestataires` testé en MockMvc. Le clic dans la fenêtre modale reste un essai manuel (voir LOT ALPHA 2)
+- Non couvert par un test automatique : le parcours complet dans le navigateur (agent signale → responsable voit rouge → affecte dans la modale → résout → évalue) et l'affichage de l'URL Cloud Run depuis un autre ordinateur
 
 ## CHOIX TECHNIQUES
 
@@ -87,8 +97,17 @@ travaille sur une information stable.
   - une même exception métier peut être traduite différemment selon l'origine : JSON pour l'API, page ou
     message flash pour les pages (ticket B3).
   Aucune trace technique n'est renvoyée : seul le message en français l'est. Pas de `catch` vide.
-- SOLID : à choisir, implémenter et justifier
-- Requête SQL native : à ajouter une seule fois puis analyser
+- SOLID :
+  - Responsabilité unique, appliquée : `JournalIncident` écrit l'historique, `IncidentService` décide des transitions, `NiveauAttentionCalculator` calcule le niveau. Changer le texte d'une ligne de journal ne modifie pas `affecter`.
+  - Ouvert / fermé, appliqué : `IncidentService` publie `EvenementIncidentDemande`. Un nouvel écouteur s'ajoute sans modifier `affecter` ni `resoudre`. C'est le choix retenu pour le lot alpha, plutôt qu'un appel direct à `EvenementIncidentRepository` dans le service.
+  - Inversion des dépendances, appliquée : les services reçoivent `Clock` et les dépôts par constructeur. Un test passe une horloge fixe et des simulacres, sans base ni heure réelle.
+  - Écarté : une interface Java devant chaque service. Les dépôts sont déjà des interfaces Spring Data. Une interface de plus par service n'aurait servi à aucun second implémenteur.
+- Requête SQL native (B10) : une seule, `IncidentRepository.compterIncidentsActifsParStation`, déclarée avec `@Query(nativeQuery = true)`. Elle compte les incidents non résolus par station pour l'indicateur « Incidents actifs par station » du tableau de bord (F11).
+  - Fonctionnement : les tables `incident`, `equipement` et `station` sont reliées par `equipement_id` et `station_id`. Le filtre `statut <> 'RESOLU'` écarte les incidents résolus. `GROUP BY s.id, s.nom` et `COUNT(i.id)` produisent le total, trié par nom de station. Le résultat arrive au service par la projection `IncidentsActifsParStation`. `TableauDeBordService` la transforme en `StatistiqueStation`. Le contrôleur et le template n'ont pas de SQL.
+  - Avantages : le regroupement et le comptage sont faits par le SGBD. Les entités ne sont pas chargées en mémoire pour cette statistique. `JOIN`, `COUNT`, `GROUP BY` et `ORDER BY` sont du SQL courant, commun à MySQL et à H2.
+  - Limites : la chaîne dépend des noms physiques (`incident`, `equipement`, `station`, `equipement_id`, `station_id`). Le compilateur Java ne la vérifie pas : une colonne renommée ne casse qu'à l'exécution. Le filtre « non résolu » doit rester le même que dans les autres lectures d'incidents actifs.
+  - Pourquoi ici : l'agrégation s'exécute en base. La même statistique pourrait s'écrire en JPQL. Le SQL natif n'est pas indispensable pour ce calcul ; il répond à l'exigence de n'en avoir qu'un, et de l'analyser.
+  - Essai : `@DataJpaTest` sur H2 (`IncidentRepositoryTest.requeteNativeCompteLesIncidentsActifsParStation`). La même requête, exécutée sur la base locale de l'application, renvoie Châtelet 2, Gare de Lyon 3, République 3. Les incidents `RESOLU` n'entrent pas dans ces totaux.
 - `@Transactional` : posé sur `IncidentService.declarer`, qui enregistre l'incident et passe l'équipement
   à `EN_PANNE` dans la même transaction (RG10).
   Posé aussi sur `modifierDescription` : le contrôle du droit relit le statut et le déclarant, puis écrit
@@ -152,17 +171,38 @@ travaille sur une information stable.
 
 ## LOT ALPHA
 
-### Fonctionnalité transverse 1 : à choisir
+### Fonctionnalité transverse 1 : journal métier d'un incident (piste 5)
 
-- Besoin, périmètre, essais, résultats et limites : à compléter
+- Besoin : retrouver qui a affecté ou résolu un incident, et quand, sans relire le code.
+- Périmètre : une entité `EvenementIncident` (incident, date, auteur, action). `IncidentService` publie `EvenementIncidentDemande` après `declarer`, `affecter` et `resoudre`. `JournalIncident` écoute et enregistre la ligne dans la même transaction. Le détail de l'incident affiche les lignes de la plus ancienne à la plus récente.
+- Essais : un test unitaire vérifie que l'événement part après l'enregistrement. `JournalIncidentWebTest` vérifie qu'une affectation et une résolution, y compris par l'API, laissent une ligne avec l'auteur et l'action.
+- Résultat : le détail montre l'historique. La date vient du `Clock` de l'écouteur, pas d'un champ saisi.
+- Limite : l'écoute est synchrone. Si l'écriture de la ligne échoue, la transition est annulée avec elle. Un journal ajouté après le commit aurait pu perdre la ligne.
 
-### Fonctionnalité transverse 2 : à choisir
+### Fonctionnalité transverse 2 : fenêtre modale d'affectation (piste 6)
 
-- Besoin, périmètre, essais, résultats et limites : à compléter
+- Besoin : affecter un prestataire depuis le tableau de bord ou le détail, et voir le badge passer à « Pris en charge » sans recharger la page.
+- Périmètre : `affectation-modale.js` ouvre la fenêtre, charge `GET /api/prestataires`, puis envoie `PUT /api/incidents/{id}/prestataire` avec le jeton CSRF de la session. La réponse met à jour le statut, le badge et le bloc prestataire déjà présents dans la page. Le formulaire classique reste en place si JavaScript est absent.
+- Essais : `PrestataireApiWebTest` vérifie que l'agent reçoit 403 sur `GET /api/prestataires` et que le responsable reçoit la liste. L'affectation elle-même réutilise `IncidentService.affecter`, déjà testé. Essai manuel : se connecter avec `responsable` / `demo1234`, ouvrir un incident non affecté en rouge, cliquer sur « Affecter », choisir un prestataire, confirmer. Le badge devient « Pris en charge » et le nom du prestataire apparaît, l'adresse de la page ne change pas.
+- Résultat : le responsable affecte sans quitter le tableau de bord.
+- Limite : le script ne couvre pas la résolution ni l'évaluation. Ces deux actions restent des formulaires qui rechargent la page. Un agent ne voit pas le bouton : le droit est aussi refusé par `@PreAuthorize` sur l'API.
 
 ## BILAN
 
-- Contribution de chacun : à compléter
-- Plus grande difficulté et solution : à compléter
-- Fonctionnalités non réalisées et pourquoi : à compléter
-- Trois points à retenir : à compléter
+- Contribution de chacun, d'après les commits :
+  - Daphne : socle (entités, exceptions, données de démonstration, connexion, layout, pages d'erreur), puis le cycle d'un incident (déclarer, consulter, modifier, affecter, résoudre), l'API et le journal métier.
+  - Jhermaine Crisostomo : horloge et niveau d'attention, consultation des équipements, historique, évaluation, fiches prestataires, tableau de bord, requête SQL native, fenêtre modale d'affectation.
+  - Les fusions sur `main` sont faites depuis le compte qui porte les pull requests. Chacun relit la pull request de l'autre.
+- Plus grande difficulté et solution : faire revenir l'équipement `EN_SERVICE` au moment où son dernier incident ouvert est résolu. Les deux écritures doivent réussir ensemble (RG10). En comptant les incidents ouverts après avoir déjà marqué l'incident `RESOLU`, Hibernate vidait le contexte et oubliait la modification en cours : l'équipement restait `EN_PANNE`. Le décompte est fait avant le changement de statut, et `resoudre` est `@Transactional`.
+- Fonctionnalités non réalisées et pourquoi : aucune des fonctionnalités F1 à F12, ni les deux lots alpha. L'inscription d'un compte n'est pas au sujet : les deux comptes de démonstration suffisent. La fenêtre modale ne résout pas et n'évalue pas ; ces actions restent des formulaires, le sujet ne demandait l'enrichissement que pour l'affectation.
+- Trois points à retenir :
+  - La règle métier est dans le service. Le contrôleur valide, appelle, et choisit la page. Masquer un bouton ne remplace pas `@PreAuthorize` (RG11).
+  - L'heure vient du `Clock` injecté. Un test fixe 47 h, 48 h et 72 h sans attendre en vrai.
+  - Une seule requête SQL native, pour l'agrégation par station. Le reste passe par Spring Data, pour ne pas coller tout le code aux noms des colonnes.
+
+## Échange de code
+
+Préparation à l'oral, chacun sur une partie qu'il n'a pas écrite :
+
+- Daphne présente le tableau de bord et la requête native : `TableauDeBordService` filtre les incidents non résolus, `IncidentRepository.compterIncidentsActifsParStation` compte par station, la vue n'a pas de SQL.
+- Jhermaine présente le journal métier : `IncidentService` publie `EvenementIncidentDemande`, `JournalIncident` enregistre la ligne dans la même transaction, le détail affiche les lignes déjà triées.
