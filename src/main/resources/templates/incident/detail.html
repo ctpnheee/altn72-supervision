@@ -231,8 +231,8 @@
             — <span th:text="${evenement.action}">Affectation au prestataire Otis</span>
         </li>
     </ol>
-    <th:block th:if="${detail.peutAffecterOuResoudre}"
-              th:replace="~{incident/modaleAffectation :: modale}">
+    <th:block th:if="${detail.peutAffecterOuResoudre}">
+        <th:block th:replace="~{incident/modaleAffectation :: modale}"></th:block>
     </th:block>
 </section>
 </body>

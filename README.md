@@ -29,13 +29,19 @@ Créer une fois la base et le compte utilisateur (en tant que `root`) :
 
 ```sql
 CREATE DATABASE IF NOT EXISTS supervision;
-CREATE USER IF NOT EXISTS 'supervision'@'localhost' IDENTIFIED BY 'supervision';
+CREATE USER IF NOT EXISTS 'supervision'@'localhost' IDENTIFIED BY '…';
 GRANT ALL PRIVILEGES ON supervision.* TO 'supervision'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-Ces valeurs correspondent aux valeurs par défaut de `application.properties`. Pour en utiliser d'autres,
-définir `DB_URL`, `DB_USERNAME` et `DB_PASSWORD`. Ne jamais versionner de secret. Voir `.env.example`.
+L'URL et l'utilisateur ont une valeur par défaut dans `application.properties` (`localhost`, `supervision`).
+Le `…` du script SQL est le mot de passe choisi sur la machine : le même que `DB_PASSWORD`, défini dans
+l'environnement avant le lancement (Spring ne lit pas le fichier `.env`). Ne jamais versionner de secret.
+Voir `.env.example`.
+
+```bash
+DB_PASSWORD=… ./mvnw spring-boot:run
+```
 
 Les tables sont créées automatiquement par Hibernate au premier lancement.
 

@@ -193,8 +193,8 @@ public class IncidentService {
 	/**
 	 * Corrige la description (F6). {@code @PreAuthorize} refuse l'appel avant d'entrer
 	 * dans la méthode (RG11) : un filtre d'URL ne voit pas si cet incident est affecté.
-	 * La transaction relit l'incident et écrit la description ensemble. Sans elle, une
-	 * affectation intercalée laisserait enregistrer la correction d'un agent.
+	 * La transaction relit l'incident et écrit la description ensemble. Elle ne verrouille
+	 * pas la ligne : une affectation concurrente peut encore s'intercaler.
 	 */
 	@Transactional
 	@PreAuthorize("@autorisationsIncident.peutModifierDescription(#id, authentication.name)")
@@ -206,9 +206,8 @@ public class IncidentService {
 
 	/**
 	 * Affecte ou réaffecte un prestataire (F7). Un incident résolu ne change plus de prestataire (RG5).
-	 * La transaction relie la lecture du statut et l'écriture : {@code open-in-view} est désactivé,
-	 * donc sans elle l'incident serait détaché et {@code save} réécrirait toute la ligne, y compris
-	 * une résolution enregistrée entre-temps.
+	 * La transaction garde l'entité gérée le temps de l'écriture : {@code open-in-view} est désactivé.
+	 * Elle ne détecte pas une modification concurrente : aucune entité n'a de {@code @Version}.
 	 */
 	@Transactional
 	@PreAuthorize("hasRole('RESPONSABLE')")
