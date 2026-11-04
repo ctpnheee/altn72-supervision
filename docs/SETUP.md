@@ -13,16 +13,17 @@ Prérequis : Java 21+ et Homebrew (macOS).
 ```bash
 brew install mysql@8.4
 brew services start mysql@8.4
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS supervision; CREATE USER IF NOT EXISTS 'supervision'@'localhost' IDENTIFIED BY 'supervision'; GRANT ALL ON supervision.* TO 'supervision'@'localhost';"
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS supervision; CREATE USER IF NOT EXISTS 'supervision'@'localhost' IDENTIFIED BY '…'; GRANT ALL ON supervision.* TO 'supervision'@'localhost';"
 ```
 
-Ces identifiants correspondent aux valeurs par défaut de `application.properties` : aucune variable à définir.
-Pour d'autres identifiants, définir `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` dans la configuration d'exécution
-de l'IDE (Spring ne lit pas le fichier `.env`). Ne jamais les versionner.
+L'URL et l'utilisateur ont une valeur par défaut dans `application.properties`. Le `…` ci-dessus est le mot
+de passe choisi sur la machine : le même que `DB_PASSWORD`, défini dans l'environnement (Spring ne lit pas
+le fichier `.env`). Ne jamais versionner de secret.
+Pour d'autres identifiants, définir aussi `DB_URL` et `DB_USERNAME`.
 
 ```bash
-./mvnw verify            # tests (H2 en mémoire, MySQL inutile)
-./mvnw spring-boot:run   # http://localhost:8080
+./mvnw verify                              # tests (H2 en mémoire, MySQL inutile)
+DB_PASSWORD=… ./mvnw spring-boot:run   # http://localhost:8080
 ```
 
 ## 2. GitHub (une seule fois, par le propriétaire du dépôt)

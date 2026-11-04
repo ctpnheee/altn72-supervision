@@ -7,7 +7,7 @@
 - Prérequis : Java 21, Maven Wrapper et MySQL 8.4 installé localement (avec MariaDB, voir le README du dépôt)
 - Initialiser la base : créer la base et l'utilisateur MySQL `supervision` (commandes SQL dans `README.md`) ;
   les tables sont créées par Hibernate au premier lancement
-- Lancer : `./mvnw spring-boot:run`, puis ouvrir http://localhost:8080 (connexion obligatoire)
+- Lancer : `DB_PASSWORD=… ./mvnw spring-boot:run` (le mot de passe n'a pas de valeur par défaut dans `application.properties`), puis ouvrir http://localhost:8080 (connexion obligatoire)
 - Application déployée : https://supervision-elblh4yp7a-ew.a.run.app (Cloud Run, base Cloud SQL MySQL 8.4 ; redéployée automatiquement à chaque merge sur `main` par un déclencheur Cloud Build)
 - Comptes de test : `responsable` / `demo1234` (Alice, RESPONSABLE) et `agent` / `demo1234` (Bruno, AGENT)
 - Données de démonstration : chargées au démarrage si la base est vide ; `APP_DEMO_RESET=true` les recrée datées de l'instant présent
@@ -101,7 +101,8 @@ travaille sur une information stable.
   - Responsabilité unique, appliquée : `JournalIncident` écrit l'historique, `IncidentService` décide des transitions, `NiveauAttentionCalculator` calcule le niveau. Changer le texte d'une ligne de journal ne modifie pas `affecter`.
   - Ouvert / fermé, appliqué : `IncidentService` publie `EvenementIncidentDemande`. Un nouvel écouteur s'ajoute sans modifier `affecter` ni `resoudre`. C'est le choix retenu pour le lot alpha, plutôt qu'un appel direct à `EvenementIncidentRepository` dans le service.
   - Inversion des dépendances, appliquée : les services reçoivent `Clock` et les dépôts par constructeur. Un test passe une horloge fixe et des simulacres, sans base ni heure réelle.
-  - Écarté : une interface Java devant chaque service. Les dépôts sont déjà des interfaces Spring Data. Une interface de plus par service n'aurait servi à aucun second implémenteur.
+  - Substitution de Liskov, écartée comme hiérarchie métier : aucun sous-type d'`Incident` ni de `IncidentService` n'a à remplacer le type de base. Là où une classe en étend une autre, le contrat du parent reste valable. `UtilisateurConnecte` étend `User` : Spring Security l'emploie comme n'importe quel `UserDetails`, le prénom et le profil sont seulement ajoutés. Les dépôts étendent `JpaRepository` sans en retirer de méthode.
+  - Ségrégation des interfaces, écartée comme découpage des services : pas d'interface qui regrouperait des opérations inutiles à ses clients. `IncidentController` appelle `IncidentService`, pas `EvaluationService`. Les dépôts Spring Data sont déjà séparés par agrégat. Une interface Java devant chaque service a été écartée : une seule implémentation, et le contrôleur de page comme l'API appelleraient les mêmes méthodes.
 - Requête SQL native (B10) : une seule, `IncidentRepository.compterIncidentsActifsParStation`, déclarée avec `@Query(nativeQuery = true)`. Elle compte les incidents non résolus par station pour l'indicateur « Incidents actifs par station » du tableau de bord (F11).
   - Fonctionnement : les tables `incident`, `equipement` et `station` sont reliées par `equipement_id` et `station_id`. Le filtre `statut <> 'RESOLU'` écarte les incidents résolus. `GROUP BY s.id, s.nom` et `COUNT(i.id)` produisent le total, trié par nom de station. Le résultat arrive au service par la projection `IncidentsActifsParStation`. `TableauDeBordService` la transforme en `StatistiqueStation`. Le contrôleur et le template n'ont pas de SQL.
   - Avantages : le regroupement et le comptage sont faits par le SGBD. Les entités ne sont pas chargées en mémoire pour cette statistique. `JOIN`, `COUNT`, `GROUP BY` et `ORDER BY` sont du SQL courant, commun à MySQL et à H2.
@@ -111,14 +112,19 @@ travaille sur une information stable.
 - `@Transactional` : posé sur `IncidentService.declarer`, qui enregistre l'incident et passe l'équipement
   à `EN_PANNE` dans la même transaction (RG10).
   Posé aussi sur `modifierDescription` : le contrôle du droit relit le statut et le déclarant, puis écrit
-  la description. Sans cette transaction, une affectation intercalée laisserait enregistrer la correction d'un agent.
+  la description dans la même transaction.
   `consulter` est en lecture seule : `open-in-view` est désactivé, et le détail doit lire l'incident, le prestataire
   et l'évaluation dans la même vue.
-  Posé sur `affecter` pour la même raison : sans transaction, l'incident chargé est détaché et `save` réécrit
-  toute la ligne. Une résolution enregistrée entre-temps serait écrasée.
+  Posé sur `affecter` : sans transaction, l'incident chargé est détaché et `save` réécrit toute la ligne.
+  La transaction garde l'entité gérée pendant l'écriture.
   Posé sur `resoudre` : l'incident passe à `RESOLU` et, s'il était le dernier incident ouvert de l'équipement,
   l'équipement repasse `EN_SERVICE`. Les deux écritures doivent réussir ou échouer ensemble (RG10). Sans cela,
   l'équipement peut rester `EN_PANNE` après une résolution réussie, ou `EN_SERVICE` après une résolution annulée.
+  Limite : la transaction assure l'atomicité demandée par RG10 (une opération invalide n'est pas à moitié
+  enregistrée). Elle ne détecte pas qu'une autre transaction a modifié la même ligne entre la lecture et
+  l'écriture. Aucune entité n'a de `@Version`. Deux écritures concurrentes, par exemple une affectation et
+  une résolution, peuvent s'écraser : la dernière `save` réécrit la ligne. Un verrouillage optimiste refuserait
+  la seconde. Ce cas n'a pas été observé pendant les essais.
 - Durée d'ouverture (F5) : calculée dans `IncidentService` avec le `Clock` injecté (incident ouvert : maintenant −
   ouverture ; incident résolu : résolution − ouverture). La vue reçoit une chaîne déjà prête. Sans cela, le template
   comparerait des dates, ce que l'architecture interdit, et un test ne pourrait pas fixer l'instant.

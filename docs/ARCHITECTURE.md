@@ -162,7 +162,7 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
 | RG7 — tris de l'historique et de la fiche équipement              | Méthodes de repository `…OrderBy…Desc` / `…Asc`                              | —                                                      |
 | RG8 — une évaluation, incident résolu et affecté, note 1–5        | `EvaluationService.evaluer`                                                  | Contrainte d'unicité sur l'incident, `@Min(1) @Max(5)` |
 | RG9 — référence unique                                            | `EquipementService` (message clair)                                          | Contrainte `unique` en base                            |
-| RG10 — atomicité                                                  | `@Transactional` sur les méthodes de service qui modifient plusieurs entités | Transactions InnoDB                                    |
+| RG10 — atomicité                                                  | `@Transactional` sur les méthodes de service qui modifient plusieurs entités | Transactions InnoDB ; pas de `@Version`                |
 | RG11 — droits côté serveur                                        | `SecurityConfig` + `@PreAuthorize`                                           | —                                                      |
 
 ### 2.4 Lien avec les principes SOLID
@@ -174,6 +174,12 @@ renvoie donc des données complètes (requêtes `JOIN FETCH` ou objets de lectur
   ou une résolution. `JournalIncident` écrit la ligne. Un autre écouteur s'ajoute sans modifier `affecter`.
 - **Inversion des dépendances (D)** : les services dépendent d'abstractions (`Clock`, interfaces de repository
   injectées par Spring), ce qui permet de les tester sans base ni horloge réelle.
+- **Substitution de Liskov (L)**, écartée comme hiérarchie métier : pas de sous-type d'`Incident` ni de service
+  qui devrait remplacer `IncidentService`. `UtilisateurConnecte` étend `User` sans en changer le contrat
+  d'authentification. Les dépôts étendent `JpaRepository` sans en retirer de méthode.
+- **Ségrégation des interfaces (I)**, écartée comme découpage des services : chaque contrôleur dépend du
+  service de son écran, et chaque dépôt Spring Data ne concerne qu'un agrégat. Une interface devant chaque
+  service n'aurait eu qu'une implémentation.
 
 ### 2.5 Vérifications en revue de code
 
@@ -264,6 +270,8 @@ Toute transition non dessinée (par exemple affecter un incident résolu) lève 
 
 Les transitions qui modifient plusieurs données sont `@Transactional` (RG10) : déclarer un incident
 passe l'équipement `EN_PANNE`, résoudre le dernier incident ouvert le repasse `EN_SERVICE`.
+La transaction rend ces écritures atomiques. Elle ne compare pas la version de la ligne : aucune entité
+n'a de `@Version`. Deux modifications concurrentes du même incident peuvent donc s'écraser.
 
 ## 6. Niveau d'attention (RG3, RG4)
 
