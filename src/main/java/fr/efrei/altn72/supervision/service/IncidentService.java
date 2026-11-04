@@ -85,7 +85,7 @@ public class IncidentService {
 			String declarantPrenom, String prestataireNom, String prestataireEmail, String prestataireTelephone,
 			Integer note, String commentaireEvaluation, LocalDateTime dateEvaluation, boolean descriptionModifiable,
 			String consigneModification, boolean peutAffecterOuResoudre, String consignePilotage,
-			String libelleAffectation, List<PrestataireChoix> prestataires, List<EvenementLigne> evenements) {
+			String libelleAffectation, List<PrestataireChoix> prestataires, List<EvenementLigne> evenements, Long prestataireId, Double prestataireNoteMoyenne) {
 	}
 
 	/** Une ligne du journal déjà prête pour la page : la vue n'ordonne pas les dates. */
@@ -322,7 +322,11 @@ public class IncidentService {
 				evaluation == null ? null : evaluation.getNote(),
 				evaluation == null ? null : evaluation.getCommentaire(),
 				evaluation == null ? null : evaluation.getDate(), modifiable, consigne, pilotage.autorise(),
-				pilotage.consigne(), pilotage.libelleAffectation(), pilotage.prestataires(), evenements);
+				pilotage.consigne(), pilotage.libelleAffectation(), pilotage.prestataires(), evenements, prestataire == null ? null : prestataire.getId(),
+				prestataire == null
+						? null
+						: evaluationRepository.noteMoyenneDuPrestataire(
+						prestataire.getId()));
 	}
 
 	private record Pilotage(boolean autorise, String consigne, String libelleAffectation,
