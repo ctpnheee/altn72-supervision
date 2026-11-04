@@ -111,4 +111,36 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 	List<Incident> findActifsAvecEquipement(
 			@Param("resolu") StatutIncident resolu);
 
+
+	/**
+	 * Projection des statistiques d'incidents actifs
+	 * regroupés par station.
+	 */
+	interface IncidentsActifsParStation {
+		String getStationNom();
+		Long getNombre();
+	}
+
+
+	/**
+	 * B10 : unique requête SQL native du projet.
+	 *
+	 * Compte les incidents non résolus par station.
+	 * Compatible avec MySQL et H2.
+	 */
+	@Query(value = """
+    SELECT
+        s.nom AS stationNom,
+        COUNT(i.id) AS nombre
+    FROM incident i
+    INNER JOIN equipement e
+        ON i.equipement_id = e.id
+    INNER JOIN station s
+        ON e.station_id = s.id
+    WHERE i.statut <> 'RESOLU'
+    GROUP BY s.id, s.nom
+    ORDER BY s.nom ASC
+    """, nativeQuery = true)
+	List<IncidentsActifsParStation> compterIncidentsActifsParStation();
+
 }

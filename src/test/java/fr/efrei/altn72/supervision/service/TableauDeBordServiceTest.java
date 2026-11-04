@@ -2,8 +2,7 @@
 package fr.efrei.altn72.supervision.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -51,6 +50,9 @@ class TableauDeBordServiceTest {
                 stationRepository,
                 new NiveauAttentionCalculator(clock),
                 clock);
+
+        lenient().when(incidentRepository.compterIncidentsActifsParStation())
+                .thenReturn(List.of());
     }
 
     private Incident creerIncident(
@@ -212,4 +214,50 @@ class TableauDeBordServiceTest {
         assertThat(tableau.prisEnCharge()).isEqualTo(1);
         assertThat(tableau.nonAffectes()).isEqualTo(3);
     }
+
+
+    @Test
+    void repartitionParStationProvientDeLaRequeteNative() {
+
+        var chatelet = mock(
+                IncidentRepository.IncidentsActifsParStation.class);
+
+        when(chatelet.getStationNom())
+                .thenReturn("Châtelet");
+
+        when(chatelet.getNombre())
+                .thenReturn(2L);
+
+        var republique = mock(
+                IncidentRepository.IncidentsActifsParStation.class);
+
+        when(republique.getStationNom())
+                .thenReturn("République");
+
+        when(republique.getNombre())
+                .thenReturn(1L);
+
+        when(incidentRepository.findActifsAvecEquipement(
+                StatutIncident.RESOLU))
+                .thenReturn(List.of());
+
+        when(stationRepository.findAllByOrderByNomAsc())
+                .thenReturn(List.of());
+
+        when(incidentRepository.compterIncidentsActifsParStation())
+                .thenReturn(List.of(chatelet, republique));
+
+        var tableau = service.consulter(null, null, null);
+
+        assertThat(tableau.repartitionStations())
+                .containsExactly(
+                        new TableauDeBordService.StatistiqueStation(
+                                "Châtelet", 2L),
+                        new TableauDeBordService.StatistiqueStation(
+                                "République", 1L));
+
+        verify(incidentRepository)
+                .compterIncidentsActifsParStation();
+    }
+
 }
