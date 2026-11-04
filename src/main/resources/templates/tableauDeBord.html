@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page('Tableau de bord', ~{::section})}">
+<head>
+    <title>Tableau de bord</title>
+</head>
+<body>
+<section>
+
+    <h1>Tableau de bord de supervision</h1>
+
+    <p>
+        Suivi des incidents actifs et de leur niveau
+        d'attention.
+    </p>
+
+    <h2>Indicateurs de supervision</h2>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Indicateur</th>
+            <th>Valeur</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr>
+            <td>Incidents actifs</td>
+            <td th:text="${tableau.totalActifs}">0</td>
+        </tr>
+
+        <tr>
+            <td>Non affectés</td>
+            <td th:text="${tableau.nonAffectes}">0</td>
+        </tr>
+
+        <tr>
+            <td>Niveau vert</td>
+            <td th:text="${tableau.verts}">0</td>
+        </tr>
+
+        <tr>
+            <td>Niveau orange</td>
+            <td th:text="${tableau.oranges}">0</td>
+        </tr>
+
+        <tr>
+            <td>Niveau rouge</td>
+            <td th:text="${tableau.rouges}">0</td>
+        </tr>
+
+        <tr>
+            <td>Pris en charge</td>
+            <td th:text="${tableau.prisEnCharge}">0</td>
+        </tr>
+
+        <tr>
+            <td>Durée moyenne d'ouverture</td>
+            <td th:text="${#numbers.formatDecimal(tableau.dureeMoyenneHeures, 1, 1) + ' h'}">
+                0,0 h
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Filtrer les incidents</h2>
+
+    <form method="get"
+          th:action="@{/tableau-de-bord}"
+          class="formulaire formulaire-large">
+
+        <label for="station">Station</label>
+
+        <select id="station" name="station">
+            <option value="">Toutes les stations</option>
+
+            <option th:each="station : ${tableau.stations}"
+                    th:value="${station.id}"
+                    th:text="${station.nom}"
+                    th:selected="${station.id == stationSelectionnee}">
+                Station
+            </option>
+        </select>
+
+        <label for="type">Type d'équipement</label>
+
+        <select id="type" name="type">
+            <option value="">Tous les types</option>
+
+            <option th:each="type : ${typesEquipement}"
+                    th:value="${type.name()}"
+                    th:text="${type.name()}"
+                    th:selected="${type == typeSelectionne}">
+                ASCENSEUR
+            </option>
+        </select>
+
+        <label for="niveau">Niveau d'attention</label>
+
+        <select id="niveau" name="niveau">
+            <option value="">Tous les niveaux</option>
+
+            <option th:each="niveau : ${niveauxAttention}"
+                    th:value="${niveau.name()}"
+                    th:text="${niveau.libelle}"
+                    th:selected="${niveau == niveauSelectionne}">
+                Rouge
+            </option>
+        </select>
+
+        <button class="bouton" type="submit">
+            Appliquer les filtres
+        </button>
+
+        <a th:href="@{/tableau-de-bord}">
+            Réinitialiser les filtres
+        </a>
+
+    </form>
+
+    <h2>Incidents actifs</h2>
+
+    <p th:text="${'Résultats : ' + #lists.size(tableau.incidents)}">
+        Résultats : 0
+    </p>
+
+    <p th:if="${#lists.isEmpty(tableau.incidents)}">
+        Aucun incident ne correspond aux critères.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(tableau.incidents)}">
+        <thead>
+        <tr>
+            <th>Incident</th>
+            <th>Équipement</th>
+            <th>Station</th>
+            <th>Ouverture</th>
+            <th>Durée</th>
+            <th>Niveau</th>
+            <th>Détail</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="incident : ${tableau.incidents}">
+
+            <td th:text="${incident.description}">
+                Panne d'ascenseur
+            </td>
+
+            <td>
+                <strong th:text="${incident.referenceEquipement}">
+                    ASC-001
+                </strong>
+
+                <div th:text="${incident.libelleEquipement}">
+                    Ascenseur
+                </div>
+            </td>
+
+            <td th:text="${incident.stationNom}">
+                Châtelet
+            </td>
+
+            <td th:text="${#temporals.format(
+                    incident.dateOuverture,
+                    'dd/MM/yyyy HH:mm')}">
+                01/11/2026 12:00
+            </td>
+
+            <td th:text="${incident.heuresOuverture + ' h'}">
+                72 h
+            </td>
+
+            <td>
+                <span th:class="|badge badge-${#strings.toLowerCase(#strings.replace(incident.niveau.name(), '_', '-'))}|"
+                      th:text="${incident.niveau.libelle}">
+                    Rouge
+                </span>
+            </td>
+
+            <td>
+                <a th:href="@{/incidents/{id}(id=${incident.id})}">
+                    Voir l'incident
+                </a>
+            </td>
+
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Incidents actifs par station</h2>
+
+    <p th:if="${#lists.isEmpty(tableau.repartitionStations)}">
+        Aucun incident actif.
+    </p>
+
+    <table th:unless="${#lists.isEmpty(tableau.repartitionStations)}">
+        <thead>
+        <tr>
+            <th>Station</th>
+            <th>Nombre d'incidents actifs</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="stat : ${tableau.repartitionStations}">
+            <td th:text="${stat.nom}">
+                Châtelet
+            </td>
+
+            <td th:text="${stat.nombre}">
+                3
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+</section>
+</body>
+</html>
