@@ -62,7 +62,8 @@ public class TableauDeBordService {
             LocalDateTime dateOuverture,
             StatutIncident statut,
             NiveauAttention niveau,
-            long heuresOuverture) {
+            long heuresOuverture,
+            String prestataireNom) {
     }
 
     public record StationVue(
@@ -193,7 +194,10 @@ public class TableauDeBordService {
                 incident.getDateOuverture(),
                 incident.getStatut(),
                 calculator.calculer(incident),
-                heures);
+                heures,
+                incident.getPrestataire() == null
+                        ? null
+                        : incident.getPrestataire().getNom());
     }
 
     private long compter(

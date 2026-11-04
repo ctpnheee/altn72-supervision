@@ -5,7 +5,7 @@
     <title>Incident</title>
 </head>
 <body>
-<section>
+<section th:attr="data-incident-row=${detail.id}">
     <p>
         <a th:href="@{/equipements/{id}(id=${detail.equipementId})}">Retour à la fiche équipement</a>
     </p>
@@ -19,12 +19,16 @@
 
     <dl class="fiche">
         <dt>Statut</dt>
-        <dd th:text="${detail.statut.libelle}">Non affecté</dd>
+        <dd data-incident-statut
+            th:text="${detail.statut.libelle}">
+            Non affecté
+        </dd>
 
         <th:block th:if="${detail.niveau != null}">
             <dt>Niveau d'attention</dt>
             <dd>
-                <span th:class="|badge badge-${#strings.toLowerCase(#strings.replace(detail.niveau.name(), '_', '-'))}|"
+                <span data-incident-badge
+                      th:class="|badge badge-${#strings.toLowerCase(#strings.replace(detail.niveau.name(), '_', '-'))}|"
                       th:text="${detail.niveau.libelle}">Vert</span>
             </dd>
         </th:block>
@@ -60,36 +64,73 @@
         <button type="submit" class="bouton">Enregistrer la description</button>
     </form>
 
+
     <h2>Prestataire</h2>
-    <p th:if="${detail.prestataireNom == null}">Aucun prestataire n'est affecté.</p>
-    <dl th:if="${detail.prestataireNom != null}" class="fiche">
+
+    <p data-prestataire-vide
+       th:hidden="${detail.prestataireNom != null}">
+        Aucun prestataire n'est affecté.
+    </p>
+
+    <dl class="fiche"
+        data-prestataire-fiche
+        th:hidden="${detail.prestataireNom == null}">
 
         <dt>Nom</dt>
         <dd>
-            <a th:href="@{/prestataires/{id}(id=${detail.prestataireId})}"
+            <a data-prestataire-lien
+               th:href="${detail.prestataireId != null}
+                ? @{/prestataires/{id}(id=${detail.prestataireId})}
+                : '#'"
                th:text="${detail.prestataireNom}">
-                Otis
+                Prestataire
             </a>
         </dd>
 
+
         <dt>Note moyenne du prestataire</dt>
-        <dd>
+        <dd data-prestataire-moyenne>
     <span th:if="${detail.prestataireNoteMoyenne != null}"
           th:text="${#numbers.formatDecimal(detail.prestataireNoteMoyenne, 1, 2) + ' / 5'}">
-        4,50 / 5
+        4.50 / 5
     </span>
-
             <span th:unless="${detail.prestataireNoteMoyenne != null}">
         Pas encore évalué
     </span>
         </dd>
 
+
         <dt>E-mail</dt>
-        <dd th:text="${detail.prestataireEmail}">otis@example.org</dd>
+        <dd data-prestataire-email
+            th:text="${detail.prestataireEmail}">
+            email@example.org
+        </dd>
+
         <dt>Téléphone</dt>
-        <dd th:text="${detail.prestataireTelephone}">0140000001</dd>
+        <dd data-prestataire-telephone
+            th:text="${detail.prestataireTelephone}">
+            0102030405
+        </dd>
     </dl>
+
+    <p data-affectation-succes
+       class="message message-succes"
+       role="status"
+       hidden></p>
+
     <p class="aide" th:if="${detail.consignePilotage}" th:text="${detail.consignePilotage}">Consigne</p>
+
+
+    <button th:if="${detail.peutAffecterOuResoudre}"
+            type="button"
+            class="bouton"
+            data-action-affecter
+            th:attr="data-incident-id=${detail.id}"
+            th:text="${detail.libelleAffectation}"
+            hidden>
+        Affecter le prestataire
+    </button>
+
 
     <form th:if="${detail.peutAffecterOuResoudre}" class="formulaire"
           th:action="@{/incidents/{id}/prestataire(id=${detail.id})}" th:object="${affectation}" method="post">
@@ -189,6 +230,9 @@
             — <span th:text="${evenement.action}">Affectation au prestataire Otis</span>
         </li>
     </ol>
+    <th:block th:if="${detail.peutAffecterOuResoudre}"
+              th:replace="~{incident/modaleAffectation :: modale}">
+    </th:block>
 </section>
 </body>
 </html>

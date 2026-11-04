@@ -140,12 +140,15 @@
             <th>Ouverture</th>
             <th>Durée</th>
             <th>Niveau</th>
+            <th>Prestataire</th>
+            <th>Affectation</th>
             <th>Détail</th>
         </tr>
         </thead>
 
         <tbody>
-        <tr th:each="incident : ${tableau.incidents}">
+        <tr th:each="incident : ${tableau.incidents}"
+            th:attr="data-incident-row=${incident.id}">
 
             <td th:text="${incident.description}">
                 Panne d'ascenseur
@@ -176,11 +179,35 @@
             </td>
 
             <td>
-                <span th:class="|badge badge-${#strings.toLowerCase(#strings.replace(incident.niveau.name(), '_', '-'))}|"
+                <span data-incident-badge
+                      th:class="|badge badge-${#strings.toLowerCase(#strings.replace(incident.niveau.name(), '_', '-'))}|"
                       th:text="${incident.niveau.libelle}">
                     Rouge
                 </span>
             </td>
+
+
+            <td data-incident-prestataire
+                th:text="${incident.prestataireNom != null ? incident.prestataireNom : 'Non affecté'}">
+                Non affecté
+            </td>
+
+            <td>
+                <button type="button"
+                        class="bouton"
+                        data-action-affecter
+                        th:attr="data-incident-id=${incident.id}"
+                        th:text="${incident.prestataireNom == null ? 'Affecter' : 'Réaffecter'}"
+                        hidden>
+                    Affecter
+                </button>
+
+                <p data-affectation-succes
+                   class="message message-succes"
+                   role="status"
+                   hidden></p>
+            </td>
+
 
             <td>
                 <a th:href="@{/incidents/{id}(id=${incident.id})}">
@@ -218,6 +245,9 @@
         </tr>
         </tbody>
     </table>
+
+    <th:block th:replace="~{incident/modaleAffectation :: modale}">
+    </th:block>
 
 </section>
 </body>

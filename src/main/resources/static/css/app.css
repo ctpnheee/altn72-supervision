@@ -411,3 +411,39 @@ main > section {
 	margin-right: 0.5rem;
 	color: var(--couleur-texte-discret);
 }
+
+
+/* B11 - Fenêtre modale d'affectation */
+
+[hidden] {
+	display: none !important;
+}
+
+#modale-affectation {
+	width: min(90vw, 30rem);
+	max-height: 90vh;
+	overflow-y: auto;
+	padding: 1.5rem;
+	border: 1px solid var(--couleur-bordure);
+	border-radius: var(--rayon);
+	background: var(--couleur-surface);
+	color: var(--couleur-texte);
+	box-shadow: var(--ombre);
+}
+
+#modale-affectation::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+}
+
+#modale-affectation h2 {
+	margin-top: 0;
+}
+
+#modale-affectation select {
+	width: 100%;
+}
+
+#modale-affectation .message {
+	margin-top: 1rem;
+}
+
