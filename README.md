@@ -1,6 +1,6 @@
 # Supervision ALTN72
 
-Socle du projet final ALTN72 2026–2027 : supervision d'équipements et suivi d'incidents.
+Supervision des équipements et suivi des incidents, projet ALTN72 2026–2027.
 
 ## Technologies
 

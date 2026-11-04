@@ -24,7 +24,7 @@ flowchart TB
     nav["Navigateur"] -- HTTP --> sec["Spring Security"]
     sec --> web["Couche web : @Controller (Thymeleaf) · @RestController (API) · DTO · @ControllerAdvice"]
     web -- Model --> views["Vues Thymeleaf"]
-    web --> svc["Couche service : règles métier RG1–RG10"]
+    web --> svc["Couche service : règles métier RG1–RG11"]
     svc --> repo["Couche persistance : Spring Data JPA"]
     repo --> db[("MySQL")]
 ```
